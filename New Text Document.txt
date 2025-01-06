@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Page</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="left-section">
+            <h1>Customer Details</h1>
+            <button id="orderButton">Order</button>
+        </div>
+        <div class="right-section" id="orderSection" style="display: none;">
+            <h2>Order Items</h2>
+            <form id="orderForm">
+                <label for="companySelect">Select Company:</label>
+                <select id="companySelect">
+                    <option value="company1">Company 1</option>
+                    <option value="company2">Company 2</option>
+                    <option value="company3">Company 3</option>
+                </select>
+                <div id="itemsDisplay">
+                    <!-- Dynamic item display will go here -->
+                </div>
+                <button type="submit">Submit Order</button>
+            </form>
+        </div>
+    </div>
+    <script src="order.js"></script>
+</body>
+</html>
