@@ -802,33 +802,32 @@
 <script>
 
 // ─────────────────────────────────────────────────────────────────
-// SETUP: Deploy a Google Apps Script Web App from your Sheet and
-// paste its URL below. See instructions in the README comment block.
-// ─────────────────────────────────────────────────────────────────
+// REPLACE your Apps Script with this CORS-safe version:
 //
-// GOOGLE APPS SCRIPT CODE (paste in script editor of your Sheet):
-//
-// function doGet() {
-//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+// function doGet(e) {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
 //   const rows = sheet.getDataRange().getValues();
-//   return ContentService.createTextOutput(JSON.stringify(rows))
+//   const callback = e && e.parameter && e.parameter.callback;
+//   const json = JSON.stringify(rows);
+//   if (callback) {
+//     return ContentService
+//       .createTextOutput(callback + "(" + json + ")")
+//       .setMimeType(ContentService.MimeType.JAVASCRIPT);
+//   }
+//   return ContentService
+//     .createTextOutput(json)
 //     .setMimeType(ContentService.MimeType.JSON);
 // }
 //
 // function doPost(e) {
-//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
-//   const updates = JSON.parse(e.postData.contents); // [{row, stock}, ...]
-//   updates.forEach(u => {
-//     sheet.getRange(u.row, 3).setValue(u.stock); // col C = stock
-//   });
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+//   const updates = JSON.parse(e.postData.contents);
+//   updates.forEach(u => sheet.getRange(u.row, 3).setValue(u.stock));
 //   return ContentService.createTextOutput("OK");
 // }
-//
-// After deploying, set Execute as: Me, Who has access: Anyone
-// Then paste the web app URL below:
 // ─────────────────────────────────────────────────────────────────
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlS5LMcnoN2RnCjGVAuF4fDXGuRYIjOCWXPdfjUm_GpjX9EO4CSPvlok-kfVXUKZoj2A/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys0kg-vLBebvLNWUtpE3qFYhCdcyX2H-Cc4ixHLBZF7iGltPkzWz_3fEWxaNN4hVsd-A/exec";
 
 const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA-e9LgjI3ZEthvS_-N-XsurvTJu_XrxpWnIypbqMXNXLB95DaFG1qXv9kvTrrU4_0Fw5ZjVDxxZc/pub?gid=1990410876&single=true&output=csv";
 
@@ -839,12 +838,9 @@ const perPage = 10;
 
 // ─── HELPERS ───
 
-// Google Sheets serial date → "MM/YYYY"
 function formatExpiry(val) {
   if (!val) return '—';
-  // If it's already a string like "12/2026" or "Dec-26", return as-is
   if (typeof val === 'string' && isNaN(Number(val))) return val.trim();
-  // Serial number: days since Dec 30, 1899
   const serial = Number(val);
   if (!serial) return String(val).trim();
   const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
@@ -853,51 +849,101 @@ function formatExpiry(val) {
   return `${mm}/${yyyy}`;
 }
 
-// Parse stock safely
 function parseStock(val) {
   const n = parseInt(val);
   return isNaN(n) ? 0 : n;
 }
+
+// JSONP loader — bypasses CORS entirely
+function fetchViaJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = '__gs_cb_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('JSONP timeout'));
+    }, 10000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    script.onerror = () => { cleanup(); reject(new Error('Script load error')); };
+    document.head.appendChild(script);
+  });
+}
+
+// CSV fallback parser
+function parseCSV(text) {
+  return text.split('\n').slice(1)
+    .filter(row => row.trim())
+    .map((row, i) => {
+      const cols = row.split(',');
+      const stock = parseStock(cols[2]);
+      return {
+        rowIndex:      i + 2,
+        dataIndex:     i,
+        name:          String(cols[1] || '').trim(),
+        stock:         stock,
+        originalStock: stock,
+        mrp:           String(cols[4] || '').trim(),
+        rate:          String(cols[5] || '').trim(),
+        batch:         String(cols[8] || '').trim(),
+        expiry:        formatExpiry(String(cols[9] || '').trim())
+      };
+    })
+    .filter(item => item.name !== '');
+}
+
 async function loadData() {
   try {
-    if (APPS_SCRIPT_URL) {
-      const res = await fetch(APPS_SCRIPT_URL);
-      const rows = await res.json();
-      data = rows.slice(1).map((cols, i) => {
-        const stock = parseStock(cols[2]);
-        return {
-          rowIndex:      i + 2,
-          name:          String(cols[1] || '').trim(),
-          stock:         stock,
-          originalStock: stock,
-          mrp:           cols[4],
-          rate:          cols[5],
-          batch:         cols[8],
-          expiry:        formatExpiry(cols[9])
-        };
-      });
-    } else {
+    let rows;
+
+    // Try JSONP first (needs updated Apps Script with callback support)
+    try {
+      rows = await fetchViaJSONP(APPS_SCRIPT_URL);
+      data = rows.slice(1)
+        .filter(cols => cols[1] && String(cols[1]).trim() !== '')
+        .map((cols, i) => {
+          const stock = parseStock(cols[2]);
+          return {
+            rowIndex:      i + 2,
+            dataIndex:     i,
+            name:          String(cols[1] || '').trim(),
+            stock:         stock,
+            originalStock: stock,
+            mrp:           String(cols[4] || '').trim(),
+            rate:          String(cols[5] || '').trim(),
+            batch:         String(cols[8] || '').trim(),
+            expiry:        formatExpiry(cols[9])
+          };
+        });
+      console.log("Loaded via JSONP:", data.length, "items");
+    } catch (jsonpErr) {
+      // JSONP failed — fall back to public CSV
+      console.warn("JSONP failed, falling back to CSV:", jsonpErr.message);
       const res = await fetch(sheetURL);
       const text = await res.text();
-      const rows = text.split("\n").slice(1);
-      data = rows.map((row, i) => {
-        const cols = row.split(",");
-        const stock = parseStock(cols[2]);
-        return {
-          rowIndex:      i + 2,
-          name:          String(cols[1] || '').trim(),
-          stock:         stock,
-          originalStock: stock,
-          mrp:           cols[4],
-          rate:          cols[5],
-          batch:         cols[8],
-          expiry:        formatExpiry(cols[9])
-        };
-      });
+      data = parseCSV(text);
+      console.log("Loaded via CSV fallback:", data.length, "items");
     }
+
     render();
-  } catch(err) {
+  } catch (err) {
     console.error("Load error:", err);
+    document.getElementById("items").innerHTML =
+      `<div class="loading" style="grid-column:1/-1;color:var(--danger)">
+        ⚠ Failed to load data.<br>
+        <small style="color:var(--muted);font-size:11px;">Update your Apps Script with the JSONP version shown in the code comments, then redeploy.</small>
+      </div>`;
   }
 }
 
@@ -911,13 +957,13 @@ function render() {
 
   document.getElementById("itemCount").textContent = data.length + " items";
 
-  pageData.forEach(item => {
-    let cartItem = cart.find(i => i.name === item.name);
+  pageData.forEach((item, pagePos) => {
+    let cartItem = cart.find(i => i.dataIndex === item.dataIndex);
     let qty = cartItem ? cartItem.qty : 0;
 
     const div = document.createElement("div");
     div.className = "card";
-    div.dataset.name = item.name;
+    div.dataset.idx = item.dataIndex;
 
     const stockNum = parseStock(item.stock);
     const stockClass = stockNum <= 0 ? 'pill-val stock-zero' : stockNum <= 10 ? 'pill-val stock-low' : 'pill-val';
@@ -950,9 +996,9 @@ function render() {
         </div>
       </div>
       <div class="qty-box">
-        <button onclick='decreaseQty(${JSON.stringify(item.name)})'>−</button>
+        <button onclick='decreaseQty(${item.dataIndex})'>−</button>
         <span data-qty>${qty}</span>
-        <button onclick='increaseQty(${JSON.stringify(item.name)})'>+</button>
+        <button onclick='increaseQty(${item.dataIndex})'>+</button>
       </div>
     `;
 
@@ -980,14 +1026,14 @@ function prevPage() {
 }
 
 // ─── INCREASE QTY ───
-function increaseQty(itemName) {
-  const item = data.find(d => d.name === itemName);
+function increaseQty(idx) {
+  const item = data[idx];
   if (!item) return;
 
   const currentStock = parseStock(item.stock);
   if (currentStock <= 0) return;
 
-  let existing = cart.find(i => i.name === itemName);
+  let existing = cart.find(i => i.dataIndex === idx);
   if (existing) {
     existing.qty++;
   } else {
@@ -995,47 +1041,44 @@ function increaseQty(itemName) {
   }
 
   item.stock = currentStock - 1;
-
   updateCartCount();
-  updateCardDisplay(itemName);
+  updateCardDisplay(idx);
 }
 
 // ─── DECREASE QTY ───
-function decreaseQty(itemName) {
-  const item = data.find(d => d.name === itemName);
+function decreaseQty(idx) {
+  const item = data[idx];
   if (!item) return;
 
-  let index = cart.findIndex(i => i.name === itemName);
-  if (index === -1) return;
+  let cartIdx = cart.findIndex(i => i.dataIndex === idx);
+  if (cartIdx === -1) return;
 
-  cart[index].qty--;
+  cart[cartIdx].qty--;
   item.stock = parseStock(item.stock) + 1;
 
-  if (cart[index].qty <= 0) cart.splice(index, 1);
+  if (cart[cartIdx].qty <= 0) cart.splice(cartIdx, 1);
 
   updateCartCount();
-  updateCardDisplay(itemName);
+  updateCardDisplay(idx);
 }
 
 // ─── UPDATE ONLY THE AFFECTED CARD ───
-function updateCardDisplay(itemName) {
-  const item = data.find(d => d.name === itemName);
-  const cartItem = cart.find(i => i.name === itemName);
+function updateCardDisplay(idx) {
+  const item = data[idx];
+  const cartItem = cart.find(i => i.dataIndex === idx);
   const qty = cartItem ? cartItem.qty : 0;
   const stock = parseStock(item.stock);
 
-  const cards = document.querySelectorAll('.card');
-  cards.forEach(card => {
-    if (card.dataset.name === itemName) {
-      const qtySpan = card.querySelector('[data-qty]');
-      const stockSpan = card.querySelector('[data-stock]');
-      if (qtySpan) qtySpan.textContent = qty;
-      if (stockSpan) {
-        stockSpan.textContent = stock;
-        stockSpan.className = stock <= 0 ? 'pill-val stock-zero' : stock <= 10 ? 'pill-val stock-low' : 'pill-val';
-      }
-    }
-  });
+  const card = document.querySelector(`.card[data-idx="${idx}"]`);
+  if (!card) return;
+
+  const qtySpan = card.querySelector('[data-qty]');
+  const stockSpan = card.querySelector('[data-stock]');
+  if (qtySpan) qtySpan.textContent = qty;
+  if (stockSpan) {
+    stockSpan.textContent = stock;
+    stockSpan.className = stock <= 0 ? 'pill-val stock-zero' : stock <= 10 ? 'pill-val stock-low' : 'pill-val';
+  }
 }
 
 // ─── CART COUNT ───
@@ -1106,11 +1149,11 @@ function confirmShopAndProceed() {
   currentShopContact = contact;
   closeShopModal();
 
-  // Write updated stock back to sheet if Apps Script is configured
+  // Write updated stock back to sheet
   if (APPS_SCRIPT_URL) {
     const updates = cart.map(cartItem => {
-      const d = data.find(d => d.name === cartItem.name);
-      return { row: d.rowIndex, stock: parseInt(d.stock) };
+      const d = data[cartItem.dataIndex];
+      return { row: d.rowIndex, stock: parseStock(d.stock) };
     });
     fetch(APPS_SCRIPT_URL, {
       method: 'POST',
