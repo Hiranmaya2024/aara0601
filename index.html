@@ -638,6 +638,70 @@
     margin-top: -6px;
     margin-bottom: 6px;
   }
+
+  /* ─── ORDER PREVIEW MODAL ─── */
+  #orderPreviewModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,8,16,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #orderPreviewModal.open { display: flex; }
+
+  .preview-shop-block {
+    background: rgba(0,229,176,0.06);
+    border: 1px solid rgba(0,229,176,0.2);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .preview-shop-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .preview-shop-label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    min-width: 60px;
+  }
+
+  .preview-shop-value {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .preview-items-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .preview-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
 </style>
 </head>
 
@@ -688,8 +752,7 @@
       <span class="cart-total-value" id="total">₹0</span>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-pdf" onclick="openShopModal('pdf')">⬇ Download PDF</button>
-      <button class="btn btn-wa" onclick="openShopModal('wa')">💬 WhatsApp</button>
+      <button class="btn btn-pdf" onclick="openShopModal()">✔ Place Order</button>
       <button class="btn btn-close" onclick="closeCart()">Close</button>
     </div>
   </div>
@@ -714,6 +777,21 @@
     <div class="modal-actions" style="margin-top:20px;">
       <button class="btn btn-pdf" onclick="confirmShopAndProceed()">✔ Confirm & Proceed</button>
       <button class="btn btn-close" onclick="closeShopModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER PREVIEW MODAL -->
+<div id="orderPreviewModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>✅ Order Preview</h3>
+    </div>
+    <div id="orderPreviewBody"></div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-pdf" onclick="downloadPDF()">⬇ Download PDF</button>
+      <button class="btn btn-wa" onclick="shareWhatsApp()">💬 Share on WhatsApp</button>
+      <button class="btn btn-close" onclick="closeOrderPreview()">Close</button>
     </div>
   </div>
 </div>
@@ -905,12 +983,14 @@ function closeCart() {
 }
 
 // SHOP MODAL
-let pendingAction = null;
+let currentShopName = '';
+let currentShopContact = '';
 
-function openShopModal(action) {
+function openShopModal() {
   if (cart.length === 0) return;
-  pendingAction = action;
   document.getElementById('shopError').style.display = 'none';
+  document.getElementById('shopName').value = currentShopName;
+  document.getElementById('shopContact').value = currentShopContact;
   document.getElementById('shopModal').style.display = 'flex';
   document.getElementById('shopModal').classList.add('open');
 }
@@ -918,7 +998,6 @@ function openShopModal(action) {
 function closeShopModal() {
   document.getElementById('shopModal').style.display = 'none';
   document.getElementById('shopModal').classList.remove('open');
-  pendingAction = null;
 }
 
 function confirmShopAndProceed() {
@@ -928,13 +1007,59 @@ function confirmShopAndProceed() {
     document.getElementById('shopError').style.display = 'block';
     return;
   }
+  currentShopName = name;
+  currentShopContact = contact;
   closeShopModal();
-  if (pendingAction === 'pdf') downloadPDF(name, contact);
-  else if (pendingAction === 'wa') shareWhatsApp(name, contact);
+  showOrderPreview();
+}
+
+// ORDER PREVIEW
+function showOrderPreview() {
+  const body = document.getElementById('orderPreviewBody');
+  let total = 0;
+
+  let itemsHTML = '';
+  cart.forEach(item => {
+    let value = item.rate * item.qty;
+    total += value;
+    itemsHTML += `
+      <div class="cart-row">
+        <span class="cart-row-name">${item.name}</span>
+        <span class="cart-row-qty">× ${item.qty}</span>
+        <span class="cart-row-price">₹${value}</span>
+      </div>`;
+  });
+
+  body.innerHTML = `
+    <div class="preview-shop-block">
+      <div class="preview-shop-row">
+        <span class="preview-shop-label">Shop</span>
+        <span class="preview-shop-value">${currentShopName}</span>
+      </div>
+      <div class="preview-shop-row">
+        <span class="preview-shop-label">Contact</span>
+        <span class="preview-shop-value">${currentShopContact}</span>
+      </div>
+    </div>
+    <div class="preview-items-title">Ordered Items</div>
+    <div class="preview-items">${itemsHTML}</div>
+    <div class="cart-total">
+      <span class="cart-total-label">Grand Total</span>
+      <span class="cart-total-value">₹${total}</span>
+    </div>
+  `;
+
+  document.getElementById('orderPreviewModal').style.display = 'flex';
+  document.getElementById('orderPreviewModal').classList.add('open');
+}
+
+function closeOrderPreview() {
+  document.getElementById('orderPreviewModal').style.display = 'none';
+  document.getElementById('orderPreviewModal').classList.remove('open');
 }
 
 // PDF DOWNLOAD
-function downloadPDF(shopName, shopContact) {
+function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -942,8 +1067,8 @@ function downloadPDF(shopName, shopContact) {
   doc.setFontSize(16);
   doc.text("Aaradhya Pharma - Order", 10, y); y += 10;
   doc.setFontSize(11);
-  doc.text(`Shop: ${shopName}`, 10, y); y += 7;
-  doc.text(`Contact: ${shopContact}`, 10, y); y += 10;
+  doc.text(`Shop: ${currentShopName}`, 10, y); y += 7;
+  doc.text(`Contact: ${currentShopContact}`, 10, y); y += 10;
   doc.setFontSize(12);
 
   let total = 0;
@@ -961,8 +1086,8 @@ function downloadPDF(shopName, shopContact) {
 }
 
 // WHATSAPP SHARE
-function shareWhatsApp(shopName, shopContact) {
-  let text = `*Aaradhya Pharma Order*\nShop: ${shopName}\nContact: ${shopContact}\n\n`;
+function shareWhatsApp() {
+  let text = `*Aaradhya Pharma Order*\nShop: ${currentShopName}\nContact: ${currentShopContact}\n\n`;
   let total = 0;
 
   cart.forEach(item => {
