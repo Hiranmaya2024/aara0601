@@ -270,6 +270,9 @@
     font-weight: 600;
   }
 
+  .stock-low  { color: #f59e0b !important; }
+  .stock-zero { color: var(--danger) !important; }
+
   /* ─── QTY BOX ─── */
   .qty-box {
     display: flex;
@@ -798,6 +801,35 @@
 
 <script>
 
+// ─────────────────────────────────────────────────────────────────
+// SETUP: Deploy a Google Apps Script Web App from your Sheet and
+// paste its URL below. See instructions in the README comment block.
+// ─────────────────────────────────────────────────────────────────
+//
+// GOOGLE APPS SCRIPT CODE (paste in script editor of your Sheet):
+//
+// function doGet() {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+//   const rows = sheet.getDataRange().getValues();
+//   return ContentService.createTextOutput(JSON.stringify(rows))
+//     .setMimeType(ContentService.MimeType.JSON);
+// }
+//
+// function doPost(e) {
+//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
+//   const updates = JSON.parse(e.postData.contents); // [{row, stock}, ...]
+//   updates.forEach(u => {
+//     sheet.getRange(u.row, 3).setValue(u.stock); // col C = stock
+//   });
+//   return ContentService.createTextOutput("OK");
+// }
+//
+// After deploying, set Execute as: Me, Who has access: Anyone
+// Then paste the web app URL below:
+// ─────────────────────────────────────────────────────────────────
+
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlS5LMcnoN2RnCjGVAuF4fDXGuRYIjOCWXPdfjUm_GpjX9EO4CSPvlok-kfVXUKZoj2A/exec";
+
 const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA-e9LgjI3ZEthvS_-N-XsurvTJu_XrxpWnIypbqMXNXLB95DaFG1qXv9kvTrrU4_0Fw5ZjVDxxZc/pub?gid=1990410876&single=true&output=csv";
 
 let data = [];
@@ -805,29 +837,47 @@ let cart = [];
 let currentPage = 1;
 const perPage = 10;
 
-// LOAD DATA
+// ─── LOAD DATA ───
 async function loadData() {
-  const res = await fetch(sheetURL);
-  const text = await res.text();
-
-  const rows = text.split("\n").slice(1);
-
-  data = rows.map(row => {
-    const cols = row.split(",");
-    return {
-      name: cols[1],
-      stock: cols[2],
-      mrp: cols[4],
-      rate: cols[5],
-      batch: cols[8],
-      expiry: cols[9]
-    };
-  });
-
-  render();
+  try {
+    // If Apps Script URL is set, fetch live JSON (includes row index)
+    if (APPS_SCRIPT_URL) {
+      const res = await fetch(APPS_SCRIPT_URL);
+      const rows = await res.json();
+      data = rows.slice(1).map((cols, i) => ({
+        rowIndex: i + 2, // 1-based, skip header
+        name:    cols[1],
+        stock:   parseInt(cols[2]) || 0,
+        mrp:     cols[4],
+        rate:    cols[5],
+        batch:   cols[8],
+        expiry:  cols[9]
+      }));
+    } else {
+      // Fallback: read-only CSV
+      const res = await fetch(sheetURL);
+      const text = await res.text();
+      const rows = text.split("\n").slice(1);
+      data = rows.map((row, i) => {
+        const cols = row.split(",");
+        return {
+          rowIndex: i + 2,
+          name:    cols[1],
+          stock:   parseInt(cols[2]) || 0,
+          mrp:     cols[4],
+          rate:    cols[5],
+          batch:   cols[8],
+          expiry:  cols[9]
+        };
+      });
+    }
+    render();
+  } catch(err) {
+    console.error("Load error:", err);
+  }
 }
 
-// RENDER ITEMS
+// ─── RENDER ITEMS ───
 function render() {
   const start = (currentPage - 1) * perPage;
   const pageData = data.slice(start, start + perPage);
@@ -838,12 +888,15 @@ function render() {
   document.getElementById("itemCount").textContent = data.length + " items";
 
   pageData.forEach(item => {
-
     let cartItem = cart.find(i => i.name === item.name);
     let qty = cartItem ? cartItem.qty : 0;
 
     const div = document.createElement("div");
     div.className = "card";
+    div.dataset.name = item.name;
+
+    const stockNum = parseInt(item.stock) || 0;
+    const stockClass = stockNum <= 0 ? 'pill-val stock-zero' : stockNum <= 10 ? 'pill-val stock-low' : 'pill-val';
 
     div.innerHTML = `
       <h4>${item.name}</h4>
@@ -861,7 +914,7 @@ function render() {
       <div class="card-info">
         <div class="info-pill">
           <span class="pill-label">Stock</span>
-          <span class="pill-val">${item.stock}</span>
+          <span class="${stockClass}" data-stock>${stockNum}</span>
         </div>
         <div class="info-pill">
           <span class="pill-label">Batch</span>
@@ -874,7 +927,7 @@ function render() {
       </div>
       <div class="qty-box">
         <button onclick='decreaseQty(${JSON.stringify(item.name)})'>−</button>
-        <span>${qty}</span>
+        <span data-qty>${qty}</span>
         <button onclick='increaseQty(${JSON.stringify(item.name)})'>+</button>
       </div>
     `;
@@ -885,7 +938,7 @@ function render() {
   document.getElementById("pageNum").innerText = "Page " + currentPage;
 }
 
-// PAGINATION
+// ─── PAGINATION ───
 function nextPage() {
   if ((currentPage * perPage) < data.length) {
     currentPage++;
@@ -902,55 +955,79 @@ function prevPage() {
   }
 }
 
-// INCREASE QTY
+// ─── INCREASE QTY ───
 function increaseQty(itemName) {
+  const item = data.find(d => d.name === itemName);
+  if (!item) return;
+
+  const currentStock = parseInt(item.stock) || 0;
+  if (currentStock <= 0) return; // can't add if out of stock
+
   let existing = cart.find(i => i.name === itemName);
   if (existing) {
+    if (existing.qty >= currentStock) return; // cap at available stock
     existing.qty++;
   } else {
-    let item = data.find(d => d.name === itemName);
-    cart.push({...item, qty: 1});
+    cart.push({ ...item, qty: 1 });
   }
+
+  // Decrement local stock immediately
+  item.stock = currentStock - 1;
+
   updateCartCount();
-  updateCardQty(itemName);
+  updateCardDisplay(itemName);
 }
 
-// DECREASE QTY
+// ─── DECREASE QTY ───
 function decreaseQty(itemName) {
+  const item = data.find(d => d.name === itemName);
+  if (!item) return;
+
   let index = cart.findIndex(i => i.name === itemName);
-  if (index !== -1) {
-    cart[index].qty--;
-    if (cart[index].qty <= 0) cart.splice(index, 1);
-  }
+  if (index === -1) return;
+
+  cart[index].qty--;
+
+  // Return stock locally
+  item.stock = (parseInt(item.stock) || 0) + 1;
+
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+
   updateCartCount();
-  updateCardQty(itemName);
+  updateCardDisplay(itemName);
 }
 
-// UPDATE ONLY THE QTY DISPLAY ON A SPECIFIC CARD
-function updateCardQty(itemName) {
+// ─── UPDATE ONLY THE AFFECTED CARD ───
+function updateCardDisplay(itemName) {
+  const item = data.find(d => d.name === itemName);
   const cartItem = cart.find(i => i.name === itemName);
   const qty = cartItem ? cartItem.qty : 0;
-  const allCards = document.querySelectorAll('.card');
-  allCards.forEach(card => {
-    const title = card.querySelector('h4');
-    if (title && title.textContent.trim() === itemName) {
-      const span = card.querySelector('.qty-box span');
-      if (span) span.textContent = qty;
+  const stock = parseInt(item.stock) || 0;
+
+  const cards = document.querySelectorAll('.card');
+  cards.forEach(card => {
+    if (card.dataset.name === itemName) {
+      const qtySpan = card.querySelector('[data-qty]');
+      const stockSpan = card.querySelector('[data-stock]');
+      if (qtySpan) qtySpan.textContent = qty;
+      if (stockSpan) {
+        stockSpan.textContent = stock;
+        stockSpan.className = stock <= 0 ? 'pill-val stock-zero' : stock <= 10 ? 'pill-val stock-low' : 'pill-val';
+      }
     }
   });
 }
 
-// CART COUNT
+// ─── CART COUNT ───
 function updateCartCount() {
   let totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
   document.getElementById("cartCount").innerText = totalQty;
 }
 
-// OPEN CART
+// ─── OPEN CART ───
 function openCart() {
   const div = document.getElementById("cartItems");
   div.innerHTML = "";
-
   let total = 0;
 
   if (cart.length === 0) {
@@ -959,14 +1036,12 @@ function openCart() {
     cart.forEach(item => {
       let value = item.rate * item.qty;
       total += value;
-
       div.innerHTML += `
         <div class="cart-row">
           <span class="cart-row-name">${item.name}</span>
           <span class="cart-row-qty">× ${item.qty}</span>
           <span class="cart-row-price">₹${value}</span>
-        </div>
-      `;
+        </div>`;
     });
   }
 
@@ -982,7 +1057,7 @@ function closeCart() {
   modal.classList.remove("open");
 }
 
-// SHOP MODAL
+// ─── SHOP MODAL ───
 let currentShopName = '';
 let currentShopContact = '';
 
@@ -1010,15 +1085,28 @@ function confirmShopAndProceed() {
   currentShopName = name;
   currentShopContact = contact;
   closeShopModal();
+
+  // Write updated stock back to sheet if Apps Script is configured
+  if (APPS_SCRIPT_URL) {
+    const updates = cart.map(cartItem => {
+      const d = data.find(d => d.name === cartItem.name);
+      return { row: d.rowIndex, stock: parseInt(d.stock) };
+    });
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify(updates)
+    }).catch(err => console.warn("Stock sync failed:", err));
+  }
+
   showOrderPreview();
 }
 
-// ORDER PREVIEW
+// ─── ORDER PREVIEW ───
 function showOrderPreview() {
   const body = document.getElementById('orderPreviewBody');
   let total = 0;
-
   let itemsHTML = '';
+
   cart.forEach(item => {
     let value = item.rate * item.qty;
     total += value;
@@ -1058,7 +1146,7 @@ function closeOrderPreview() {
   document.getElementById('orderPreviewModal').classList.remove('open');
 }
 
-// PDF DOWNLOAD
+// ─── PDF DOWNLOAD ───
 function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -1085,7 +1173,7 @@ function downloadPDF() {
   doc.save("order.pdf");
 }
 
-// WHATSAPP SHARE
+// ─── WHATSAPP SHARE ───
 function shareWhatsApp() {
   let text = `*Aaradhya Pharma Order*\nShop: ${currentShopName}\nContact: ${currentShopContact}\n\n`;
   let total = 0;
@@ -1100,7 +1188,7 @@ function shareWhatsApp() {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
 }
 
-// INIT
+// ─── INIT ───
 loadData();
 
 </script>
