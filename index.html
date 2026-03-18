@@ -1,42 +1,257 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aaradhya Pharmaceuticals - Login</title>
-  <link rel="stylesheet" href="styles/styles.css">
+<meta charset="UTF-8">
+<title>Aaradhya Pharma Ordering</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #f5f7fa;
+}
+
+header {
+  background: #0a2540;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.container {
+  padding: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px,1fr));
+  gap: 10px;
+}
+
+.card {
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.pagination {
+  text-align: center;
+  margin: 20px;
+}
+
+#cartModal {
+  position: fixed;
+  top:0; left:0;
+  width:100%; height:100%;
+  background: rgba(0,0,0,0.6);
+  display:none;
+}
+
+.modal-content {
+  background:white;
+  margin: 50px auto;
+  padding:20px;
+  width:90%;
+  max-width:600px;
+  border-radius:10px;
+}
+</style>
 </head>
+
 <body>
-    <header>
-    <h1>Home</h1>
-    <a href="index.html">Home</a>
-    </header>
-    <main class="login-container">
-          <div class="header-group">
-              <img src="images/logo.jpg" alt="Aaradhya Pharmaceuticals Logo">
-              <h2 style="text-align:center">Aaradhya Pharmaceuticals</h2>
-          </div>
-          <div class="login-group">
-           <form id="loginForm" class="login-form">
-            <h2 style="text-align:center">Login</h2>
-            <label for="username">Username</label>
-            <input type="text" id="username" name="username" placeholder="Enter your username">
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" placeholder="Enter your password">
-            <button type="submit">Login</button>
-            <a href="#" class="forgot-password">Forgot Password?</a>
-            <p id="errorMessage" class="text-danger text-center mt-3"></p>
-           </form>
-	  </div>
-     </main>
-       <footer>
-       <!--   <a href="#">Contact Us</a> | <a href="#">Privacy Policy | <a href="offers.html">Offers</a>-->
-	   <p>&copy; 2024 Aaradhya Pharmaceuticals. All rights reserved.</p>
-       </footer>
-  <script src="scripts/config.js"></script>
-  <script src="scripts/pagination.js"></script>
-  <script src="scripts/google-sheets-api.js"></script>
-  <script src="scripts/auth.js"></script>
+
+<header>
+  <h3>Aaradhya Pharma</h3>
+  <button onclick="openCart()">🛒 Cart (<span id="cartCount">0</span>)</button>
+</header>
+
+<div class="container">
+  <div id="items" class="grid"></div>
+  <div class="pagination">
+    <button onclick="prevPage()">Prev</button>
+    <span id="pageNum"></span>
+    <button onclick="nextPage()">Next</button>
+  </div>
+</div>
+
+<!-- CART MODAL -->
+<div id="cartModal">
+  <div class="modal-content">
+    <h3>Order Summary</h3>
+    <div id="cartItems"></div>
+    <h4 id="total"></h4>
+
+    <button onclick="downloadPDF()">Download PDF</button>
+    <button onclick="shareWhatsApp()">WhatsApp</button>
+    <button onclick="closeCart()">Close</button>
+  </div>
+</div>
+
+<script>
+
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA-e9LgjI3ZEthvS_-N-XsurvTJu_XrxpWnIypbqMXNXLB95DaFG1qXv9kvTrrU4_0Fw5ZjVDxxZc/pub?gid=1990410876&single=true&output=csv";
+
+let data = [];
+let cart = [];
+let currentPage = 1;
+const perPage = 10;
+
+async function loadData() {
+  const res = await fetch(sheetURL);
+  const text = await res.text();
+
+  const rows = text.split("\n").slice(1);
+
+  data = rows.map(row => {
+    const cols = row.split(",");
+    return {
+      name: cols[1],
+      stock: cols[2],
+      mrp: cols[4],
+      rate: cols[5],
+      batch: cols[8],
+      expiry: cols[9]
+    };
+  });
+
+  render();
+}
+
+function render() {
+  const start = (currentPage - 1) * perPage;
+  const pageData = data.slice(start, start + perPage);
+
+  const container = document.getElementById("items");
+  container.innerHTML = "";
+
+  pageData.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h4>${item.name}</h4>
+      <p>MRP: ₹${item.mrp}</p>
+      <p>Rate: ₹${item.rate}</p>
+      <p>Stock: ${item.stock}</p>
+      <p>Batch: ${item.batch}</p>
+      <p>Expiry: ${item.expiry}</p>
+      <button onclick='addToCart(${JSON.stringify(item)})'>Add</button>
+    `;
+
+    container.appendChild(div);
+  });
+
+  document.getElementById("pageNum").innerText = "Page " + currentPage;
+}
+
+function nextPage() {
+  if ((currentPage * perPage) < data.length) {
+    currentPage++;
+    render();
+  }
+}
+
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    render();
+  }
+}
+
+function addToCart(item) {
+  let existing = cart.find(i => i.name === item.name);
+
+  if (existing) {
+    existing.qty++;
+  } else {
+    cart.push({...item, qty: 1});
+  }
+
+  updateCartCount();
+}
+
+function updateCartCount() {
+  document.getElementById("cartCount").innerText = cart.length;
+}
+
+function openCart() {
+  const div = document.getElementById("cartItems");
+  div.innerHTML = "";
+
+  let total = 0;
+
+  cart.forEach(item => {
+    let value = item.rate * item.qty;
+    total += value;
+
+    div.innerHTML += `
+      <p>${item.name} | Qty: ${item.qty} | ₹${value}</p>
+    `;
+  });
+
+  document.getElementById("total").innerText = "Total: ₹" + total;
+  document.getElementById("cartModal").style.display = "block";
+}
+
+function closeCart() {
+  document.getElementById("cartModal").style.display = "none";
+}
+
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  let y = 10;
+  doc.text("Aaradhya Pharma Order", 10, y);
+  y += 10;
+
+  let total = 0;
+
+  cart.forEach(item => {
+    let value = item.rate * item.qty;
+    total += value;
+
+    doc.text(`${item.name} - Qty: ${item.qty} - ₹${value}`, 10, y);
+    y += 10;
+  });
+
+  doc.text("Total: ₹" + total, 10, y + 10);
+
+  doc.save("order.pdf");
+}
+
+function shareWhatsApp() {
+  let text = "Order Details:\n";
+  let total = 0;
+
+  cart.forEach(item => {
+    let value = item.rate * item.qty;
+    total += value;
+    text += `${item.name} - Qty: ${item.qty} - ₹${value}\n`;
+  });
+
+  text += `Total: ₹${total}`;
+
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+}
+
+loadData();
+
+</script>
+
 </body>
 </html>
-
