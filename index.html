@@ -837,37 +837,61 @@ let cart = [];
 let currentPage = 1;
 const perPage = 10;
 
-// ─── LOAD DATA ───
+// ─── HELPERS ───
+
+// Google Sheets serial date → "MM/YYYY"
+function formatExpiry(val) {
+  if (!val) return '—';
+  // If it's already a string like "12/2026" or "Dec-26", return as-is
+  if (typeof val === 'string' && isNaN(Number(val))) return val.trim();
+  // Serial number: days since Dec 30, 1899
+  const serial = Number(val);
+  if (!serial) return String(val).trim();
+  const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const yyyy = date.getUTCFullYear();
+  return `${mm}/${yyyy}`;
+}
+
+// Parse stock safely
+function parseStock(val) {
+  const n = parseInt(val);
+  return isNaN(n) ? 0 : n;
+}
 async function loadData() {
   try {
-    // If Apps Script URL is set, fetch live JSON (includes row index)
     if (APPS_SCRIPT_URL) {
       const res = await fetch(APPS_SCRIPT_URL);
       const rows = await res.json();
-      data = rows.slice(1).map((cols, i) => ({
-        rowIndex: i + 2, // 1-based, skip header
-        name:    cols[1],
-        stock:   parseInt(cols[2]) || 0,
-        mrp:     cols[4],
-        rate:    cols[5],
-        batch:   cols[8],
-        expiry:  cols[9]
-      }));
+      data = rows.slice(1).map((cols, i) => {
+        const stock = parseStock(cols[2]);
+        return {
+          rowIndex:      i + 2,
+          name:          String(cols[1] || '').trim(),
+          stock:         stock,
+          originalStock: stock,
+          mrp:           cols[4],
+          rate:          cols[5],
+          batch:         cols[8],
+          expiry:        formatExpiry(cols[9])
+        };
+      });
     } else {
-      // Fallback: read-only CSV
       const res = await fetch(sheetURL);
       const text = await res.text();
       const rows = text.split("\n").slice(1);
       data = rows.map((row, i) => {
         const cols = row.split(",");
+        const stock = parseStock(cols[2]);
         return {
-          rowIndex: i + 2,
-          name:    cols[1],
-          stock:   parseInt(cols[2]) || 0,
-          mrp:     cols[4],
-          rate:    cols[5],
-          batch:   cols[8],
-          expiry:  cols[9]
+          rowIndex:      i + 2,
+          name:          String(cols[1] || '').trim(),
+          stock:         stock,
+          originalStock: stock,
+          mrp:           cols[4],
+          rate:          cols[5],
+          batch:         cols[8],
+          expiry:        formatExpiry(cols[9])
         };
       });
     }
@@ -895,7 +919,7 @@ function render() {
     div.className = "card";
     div.dataset.name = item.name;
 
-    const stockNum = parseInt(item.stock) || 0;
+    const stockNum = parseStock(item.stock);
     const stockClass = stockNum <= 0 ? 'pill-val stock-zero' : stockNum <= 10 ? 'pill-val stock-low' : 'pill-val';
 
     div.innerHTML = `
@@ -960,18 +984,16 @@ function increaseQty(itemName) {
   const item = data.find(d => d.name === itemName);
   if (!item) return;
 
-  const currentStock = parseInt(item.stock) || 0;
-  if (currentStock <= 0) return; // can't add if out of stock
+  const currentStock = parseStock(item.stock);
+  if (currentStock <= 0) return;
 
   let existing = cart.find(i => i.name === itemName);
   if (existing) {
-    if (existing.qty >= currentStock) return; // cap at available stock
     existing.qty++;
   } else {
     cart.push({ ...item, qty: 1 });
   }
 
-  // Decrement local stock immediately
   item.stock = currentStock - 1;
 
   updateCartCount();
@@ -987,9 +1009,7 @@ function decreaseQty(itemName) {
   if (index === -1) return;
 
   cart[index].qty--;
-
-  // Return stock locally
-  item.stock = (parseInt(item.stock) || 0) + 1;
+  item.stock = parseStock(item.stock) + 1;
 
   if (cart[index].qty <= 0) cart.splice(index, 1);
 
@@ -1002,7 +1022,7 @@ function updateCardDisplay(itemName) {
   const item = data.find(d => d.name === itemName);
   const cartItem = cart.find(i => i.name === itemName);
   const qty = cartItem ? cartItem.qty : 0;
-  const stock = parseInt(item.stock) || 0;
+  const stock = parseStock(item.stock);
 
   const cards = document.querySelectorAll('.card');
   cards.forEach(card => {
@@ -1195,4 +1215,3 @@ loadData();
 
 </body>
 </html>
-
