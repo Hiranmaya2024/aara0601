@@ -23,7 +23,7 @@ header {
 }
 
 button {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border: none;
   background: #007bff;
   color: white;
@@ -46,6 +46,19 @@ button {
   padding: 10px;
   border-radius: 10px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.qty-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.qty-box span {
+  min-width: 20px;
+  text-align: center;
+  font-weight: bold;
 }
 
 .pagination {
@@ -81,6 +94,7 @@ button {
 
 <div class="container">
   <div id="items" class="grid"></div>
+
   <div class="pagination">
     <button onclick="prevPage()">Prev</button>
     <span id="pageNum"></span>
@@ -110,6 +124,7 @@ let cart = [];
 let currentPage = 1;
 const perPage = 10;
 
+// LOAD DATA
 async function loadData() {
   const res = await fetch(sheetURL);
   const text = await res.text();
@@ -131,6 +146,7 @@ async function loadData() {
   render();
 }
 
+// RENDER ITEMS
 function render() {
   const start = (currentPage - 1) * perPage;
   const pageData = data.slice(start, start + perPage);
@@ -139,6 +155,10 @@ function render() {
   container.innerHTML = "";
 
   pageData.forEach(item => {
+
+    let cartItem = cart.find(i => i.name === item.name);
+    let qty = cartItem ? cartItem.qty : 0;
+
     const div = document.createElement("div");
     div.className = "card";
 
@@ -149,7 +169,12 @@ function render() {
       <p>Stock: ${item.stock}</p>
       <p>Batch: ${item.batch}</p>
       <p>Expiry: ${item.expiry}</p>
-      <button onclick='addToCart(${JSON.stringify(item)})'>Add</button>
+
+      <div class="qty-box">
+        <button onclick='decreaseQty("${item.name}")'>-</button>
+        <span>${qty}</span>
+        <button onclick='increaseQty(${JSON.stringify(item)})'>+</button>
+      </div>
     `;
 
     container.appendChild(div);
@@ -158,6 +183,7 @@ function render() {
   document.getElementById("pageNum").innerText = "Page " + currentPage;
 }
 
+// PAGINATION
 function nextPage() {
   if ((currentPage * perPage) < data.length) {
     currentPage++;
@@ -172,7 +198,8 @@ function prevPage() {
   }
 }
 
-function addToCart(item) {
+// INCREASE QTY
+function increaseQty(item) {
   let existing = cart.find(i => i.name === item.name);
 
   if (existing) {
@@ -182,12 +209,32 @@ function addToCart(item) {
   }
 
   updateCartCount();
+  render();
 }
 
+// DECREASE QTY
+function decreaseQty(name) {
+  let index = cart.findIndex(i => i.name === name);
+
+  if (index !== -1) {
+    cart[index].qty--;
+
+    if (cart[index].qty <= 0) {
+      cart.splice(index, 1);
+    }
+  }
+
+  updateCartCount();
+  render();
+}
+
+// CART COUNT
 function updateCartCount() {
-  document.getElementById("cartCount").innerText = cart.length;
+  let totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+  document.getElementById("cartCount").innerText = totalQty;
 }
 
+// OPEN CART
 function openCart() {
   const div = document.getElementById("cartItems");
   div.innerHTML = "";
@@ -211,6 +258,7 @@ function closeCart() {
   document.getElementById("cartModal").style.display = "none";
 }
 
+// PDF DOWNLOAD
 function downloadPDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -234,6 +282,7 @@ function downloadPDF() {
   doc.save("order.pdf");
 }
 
+// WHATSAPP SHARE
 function shareWhatsApp() {
   let text = "Order Details:\n";
   let total = 0;
@@ -249,6 +298,7 @@ function shareWhatsApp() {
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
 }
 
+// INIT
 loadData();
 
 </script>
