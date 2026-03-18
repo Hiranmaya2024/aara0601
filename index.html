@@ -586,6 +586,58 @@
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ─── SHOP MODAL ─── */
+  #shopModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,8,16,0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #shopModal.open { display: flex; }
+
+  .shop-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .shop-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+  }
+
+  .shop-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Sora', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .shop-input:focus { border-color: var(--accent); }
+  .shop-input::placeholder { color: var(--muted); }
+
+  .shop-error {
+    font-size: 12px;
+    color: var(--danger);
+    margin-top: -6px;
+    margin-bottom: 6px;
+  }
 </style>
 </head>
 
@@ -636,9 +688,32 @@
       <span class="cart-total-value" id="total">₹0</span>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-pdf" onclick="downloadPDF()">⬇ Download PDF</button>
-      <button class="btn btn-wa" onclick="shareWhatsApp()">💬 WhatsApp</button>
+      <button class="btn btn-pdf" onclick="openShopModal('pdf')">⬇ Download PDF</button>
+      <button class="btn btn-wa" onclick="openShopModal('wa')">💬 WhatsApp</button>
       <button class="btn btn-close" onclick="closeCart()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP DETAILS MODAL -->
+<div id="shopModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>📋 Shop Details</h3>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Please enter your details to place the order.</p>
+    <div class="shop-field">
+      <label class="shop-label">Shop Name</label>
+      <input type="text" id="shopName" class="shop-input" placeholder="e.g. Ravi Medical Store" />
+    </div>
+    <div class="shop-field">
+      <label class="shop-label">Contact Number</label>
+      <input type="tel" id="shopContact" class="shop-input" placeholder="e.g. 9876543210" />
+    </div>
+    <div id="shopError" class="shop-error" style="display:none;">Please fill in both fields.</div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-pdf" onclick="confirmShopAndProceed()">✔ Confirm & Proceed</button>
+      <button class="btn btn-close" onclick="closeShopModal()">Cancel</button>
     </div>
   </div>
 </div>
@@ -720,9 +795,9 @@ function render() {
         </div>
       </div>
       <div class="qty-box">
-        <button onclick='decreaseQty("${item.name}")'>−</button>
+        <button onclick='decreaseQty(${JSON.stringify(item.name)})'>−</button>
         <span>${qty}</span>
-        <button onclick='increaseQty(${JSON.stringify(item)})'>+</button>
+        <button onclick='increaseQty(${JSON.stringify(item.name)})'>+</button>
       </div>
     `;
 
@@ -750,33 +825,41 @@ function prevPage() {
 }
 
 // INCREASE QTY
-function increaseQty(item) {
-  let existing = cart.find(i => i.name === item.name);
-
+function increaseQty(itemName) {
+  let existing = cart.find(i => i.name === itemName);
   if (existing) {
     existing.qty++;
   } else {
+    let item = data.find(d => d.name === itemName);
     cart.push({...item, qty: 1});
   }
-
   updateCartCount();
-  render();
+  updateCardQty(itemName);
 }
 
 // DECREASE QTY
-function decreaseQty(name) {
-  let index = cart.findIndex(i => i.name === name);
-
+function decreaseQty(itemName) {
+  let index = cart.findIndex(i => i.name === itemName);
   if (index !== -1) {
     cart[index].qty--;
-
-    if (cart[index].qty <= 0) {
-      cart.splice(index, 1);
-    }
+    if (cart[index].qty <= 0) cart.splice(index, 1);
   }
-
   updateCartCount();
-  render();
+  updateCardQty(itemName);
+}
+
+// UPDATE ONLY THE QTY DISPLAY ON A SPECIFIC CARD
+function updateCardQty(itemName) {
+  const cartItem = cart.find(i => i.name === itemName);
+  const qty = cartItem ? cartItem.qty : 0;
+  const allCards = document.querySelectorAll('.card');
+  allCards.forEach(card => {
+    const title = card.querySelector('h4');
+    if (title && title.textContent.trim() === itemName) {
+      const span = card.querySelector('.qty-box span');
+      if (span) span.textContent = qty;
+    }
+  });
 }
 
 // CART COUNT
@@ -821,43 +904,74 @@ function closeCart() {
   modal.classList.remove("open");
 }
 
+// SHOP MODAL
+let pendingAction = null;
+
+function openShopModal(action) {
+  if (cart.length === 0) return;
+  pendingAction = action;
+  document.getElementById('shopError').style.display = 'none';
+  document.getElementById('shopModal').style.display = 'flex';
+  document.getElementById('shopModal').classList.add('open');
+}
+
+function closeShopModal() {
+  document.getElementById('shopModal').style.display = 'none';
+  document.getElementById('shopModal').classList.remove('open');
+  pendingAction = null;
+}
+
+function confirmShopAndProceed() {
+  const name = document.getElementById('shopName').value.trim();
+  const contact = document.getElementById('shopContact').value.trim();
+  if (!name || !contact) {
+    document.getElementById('shopError').style.display = 'block';
+    return;
+  }
+  closeShopModal();
+  if (pendingAction === 'pdf') downloadPDF(name, contact);
+  else if (pendingAction === 'wa') shareWhatsApp(name, contact);
+}
+
 // PDF DOWNLOAD
-function downloadPDF() {
+function downloadPDF(shopName, shopContact) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  let y = 10;
-  doc.text("Aaradhya Pharma Order", 10, y);
-  y += 10;
+  let y = 14;
+  doc.setFontSize(16);
+  doc.text("Aaradhya Pharma - Order", 10, y); y += 10;
+  doc.setFontSize(11);
+  doc.text(`Shop: ${shopName}`, 10, y); y += 7;
+  doc.text(`Contact: ${shopContact}`, 10, y); y += 10;
+  doc.setFontSize(12);
 
   let total = 0;
-
   cart.forEach(item => {
     let value = item.rate * item.qty;
     total += value;
-
-    doc.text(`${item.name} - Qty: ${item.qty} - ₹${value}`, 10, y);
-    y += 10;
+    doc.text(`${item.name} - Qty: ${item.qty} - Rs.${value}`, 10, y);
+    y += 8;
   });
 
-  doc.text("Total: ₹" + total, 10, y + 10);
-
+  y += 4;
+  doc.setFontSize(13);
+  doc.text("Total: Rs." + total, 10, y);
   doc.save("order.pdf");
 }
 
 // WHATSAPP SHARE
-function shareWhatsApp() {
-  let text = "Order Details:\n";
+function shareWhatsApp(shopName, shopContact) {
+  let text = `*Aaradhya Pharma Order*\nShop: ${shopName}\nContact: ${shopContact}\n\n`;
   let total = 0;
 
   cart.forEach(item => {
     let value = item.rate * item.qty;
     total += value;
-    text += `${item.name} - Qty: ${item.qty} - ₹${value}\n`;
+    text += `${item.name} - Qty: ${item.qty} - Rs.${value}\n`;
   });
 
-  text += `Total: ₹${total}`;
-
+  text += `\n*Total: Rs.${total}*`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
 }
 
