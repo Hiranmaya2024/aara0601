@@ -904,12 +904,14 @@ function parseCSV(text) {
 }
 
 async function loadData() {
-  try {
-    let rows;
+  // Use allorigins proxy to bypass CORS — works whether file is local or hosted
+  const PROXY = "https://api.allorigins.win/raw?url=";
+  const csvProxied = PROXY + encodeURIComponent(sheetURL);
 
-    // Try JSONP first (needs updated Apps Script with callback support)
+  try {
+    // ── Try JSONP first (reads live stock from sheet via Apps Script)
     try {
-      rows = await fetchViaJSONP(APPS_SCRIPT_URL);
+      const rows = await fetchViaJSONP(APPS_SCRIPT_URL);
       data = rows.slice(1)
         .filter(cols => cols[1] && String(cols[1]).trim() !== '')
         .map((cols, i) => {
@@ -926,23 +928,29 @@ async function loadData() {
             expiry:        formatExpiry(cols[9])
           };
         });
-      console.log("Loaded via JSONP:", data.length, "items");
+      console.log("✅ Loaded via JSONP:", data.length, "items");
+      render();
+      return;
     } catch (jsonpErr) {
-      // JSONP failed — fall back to public CSV
-      console.warn("JSONP failed, falling back to CSV:", jsonpErr.message);
-      const res = await fetch(sheetURL);
-      const text = await res.text();
-      data = parseCSV(text);
-      console.log("Loaded via CSV fallback:", data.length, "items");
+      console.warn("⚠ JSONP failed:", jsonpErr.message, "— trying CSV via proxy...");
     }
 
+    // ── Fallback: CSV via CORS proxy
+    const res = await fetch(csvProxied);
+    if (!res.ok) throw new Error("Proxy fetch failed: " + res.status);
+    const text = await res.text();
+    data = parseCSV(text);
+    console.log("✅ Loaded via CSV proxy:", data.length, "items");
     render();
+
   } catch (err) {
     console.error("Load error:", err);
     document.getElementById("items").innerHTML =
       `<div class="loading" style="grid-column:1/-1;color:var(--danger)">
-        ⚠ Failed to load data.<br>
-        <small style="color:var(--muted);font-size:11px;">Update your Apps Script with the JSONP version shown in the code comments, then redeploy.</small>
+        ⚠ Could not load products.<br>
+        <small style="color:var(--muted);font-size:11px;">
+          Make sure you are connected to the internet, then reload the page.
+        </small>
       </div>`;
   }
 }
