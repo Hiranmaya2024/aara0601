@@ -1,1266 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>Aaradhya Pharma Ordering</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0b0f1a;
-    --surface: #111827;
-    --surface2: #1a2235;
-    --border: rgba(255,255,255,0.07);
-    --accent: #00e5b0;
-    --accent2: #0099ff;
-    --text: #e8edf5;
-    --muted: #6b7a99;
-    --danger: #ff4d6d;
-    --card-glow: rgba(0, 229, 176, 0.06);
-  }
-
-  body {
-    font-family: 'Sora', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    background-image:
-      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,229,176,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 40% at 80% 110%, rgba(0,153,255,0.06) 0%, transparent 60%);
-  }
-
-  /* ─── HEADER ─── */
-  header {
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    background: rgba(11,15,26,0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .brand-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    background: linear-gradient(135deg, var(--accent), var(--accent2));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-  }
-
-  .brand-name {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-    color: var(--text);
-  }
-
-  .brand-sub {
-    font-size: 10px;
-    color: var(--muted);
-    font-weight: 400;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-
-  /* ─── CART BUTTON ─── */
-  #cartBtn {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-  }
-
-  #cartBtn:hover {
-    border-color: var(--accent);
-    background: rgba(0,229,176,0.08);
-    color: var(--accent);
-  }
-
-  .cart-badge {
-    background: var(--accent);
-    color: #000;
-    font-size: 10px;
-    font-weight: 700;
-    font-family: 'Space Mono', monospace;
-    padding: 2px 6px;
-    border-radius: 20px;
-    min-width: 20px;
-    text-align: center;
-    line-height: 1.4;
-  }
-
-  /* ─── CONTAINER ─── */
-  .container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 32px 20px;
-  }
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-  }
-
-  .section-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-  }
-
-  .item-count {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--accent);
-    background: rgba(0,229,176,0.08);
-    border: 1px solid rgba(0,229,176,0.2);
-    padding: 3px 10px;
-    border-radius: 20px;
-  }
-
-  /* ─── GRID ─── */
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-
-  /* ─── CARD ─── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px 18px;
-    transition: all 0.25s ease;
-    position: relative;
-    overflow: hidden;
-    animation: fadeUp 0.4s ease both;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  .card:hover {
-    border-color: rgba(0,229,176,0.25);
-    background: var(--surface2);
-    transform: translateY(-3px);
-    box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,229,176,0.1);
-  }
-
-  .card:hover::before { opacity: 1; }
-
-  .card h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.4;
-    margin: 0;
-  }
-
-  /* Price row: Rate + MRP side by side */
-  .card-prices {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .price-block { display: flex; flex-direction: column; gap: 2px; }
-
-  .price-block .meta-label {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--muted);
-    font-weight: 500;
-  }
-
-  .price-block .price-val {
-    font-family: 'Space Mono', monospace;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-
-  .price-block .mrp-val {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .price-divider {
-    width: 1px;
-    height: 32px;
-    background: var(--border);
-  }
-
-  /* Info pills row */
-  .card-info {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .info-pill {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 4px 9px;
-  }
-
-  .info-pill .pill-label {
-    color: var(--muted);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-size: 9px;
-  }
-
-  .info-pill .pill-val {
-    font-family: 'Space Mono', monospace;
-    color: var(--text);
-    font-size: 11px;
-    font-weight: 600;
-  }
-
-  .stock-low  { color: #f59e0b !important; }
-  .stock-zero { color: var(--danger) !important; }
-
-  /* ─── QTY BOX ─── */
-  .qty-box {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0;
-    margin-top: 6px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-
-  .qty-box button {
-    background: transparent;
-    border: none;
-    color: var(--accent);
-    font-size: 18px;
-    font-weight: 700;
-    width: 38px;
-    height: 38px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s;
-    font-family: 'Space Mono', monospace;
-    border-radius: 0;
-    padding: 0;
-  }
-
-  .qty-box button:hover { background: rgba(0,229,176,0.1); }
-  .qty-box button:active { background: rgba(0,229,176,0.2); }
-
-  .qty-box span {
-    font-family: 'Space Mono', monospace;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-    min-width: 32px;
-    text-align: center;
-  }
-
-  /* ─── PAGINATION ─── */
-  .pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 40px;
-    padding: 20px;
-  }
-
-  .pagination button {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 9px 20px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .pagination button:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0,229,176,0.06);
-  }
-
-  #pageNum {
-    font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    color: var(--muted);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 9px 16px;
-    border-radius: 10px;
-    min-width: 80px;
-    text-align: center;
-  }
-
-  /* ─── MODAL ─── */
-  #cartModal {
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 8, 16, 0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #cartModal.open {
-    display: flex;
-  }
-
-  .modal-content {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 28px;
-    width: 92%;
-    max-width: 560px;
-    max-height: 88vh;
-    overflow-y: auto;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.7);
-    animation: slideUp 0.3s cubic-bezier(0.16,1,0.3,1) both;
-  }
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .modal-header h3 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-
-  #cartItems {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  .cart-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 12px 16px;
-    gap: 12px;
-  }
-
-  .cart-row-name {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text);
-    flex: 1;
-    line-height: 1.4;
-  }
-
-  .cart-row-qty {
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--muted);
-    white-space: nowrap;
-  }
-
-  .cart-row-price {
-    font-family: 'Space Mono', monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--accent);
-    white-space: nowrap;
-  }
-
-  .cart-total {
-    background: rgba(0,229,176,0.06);
-    border: 1px solid rgba(0,229,176,0.2);
-    border-radius: 12px;
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-  }
-
-  .cart-total-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-  }
-
-  .cart-total-value {
-    font-family: 'Space Mono', monospace;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--accent);
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    border: none;
-    font-family: 'Sora', sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    padding: 10px 18px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex: 1;
-    justify-content: center;
-    min-width: 120px;
-  }
-
-  .btn-pdf {
-    background: rgba(0,229,176,0.12);
-    border: 1px solid rgba(0,229,176,0.3);
-    color: var(--accent);
-  }
-
-  .btn-pdf:hover {
-    background: rgba(0,229,176,0.2);
-    transform: translateY(-1px);
-  }
-
-  .btn-wa {
-    background: rgba(37,211,102,0.12);
-    border: 1px solid rgba(37,211,102,0.3);
-    color: #25d366;
-  }
-
-  .btn-wa:hover {
-    background: rgba(37,211,102,0.2);
-    transform: translateY(-1px);
-  }
-
-  .btn-close {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    color: var(--muted);
-  }
-
-  .btn-close:hover {
-    background: rgba(255,255,255,0.08);
-    color: var(--text);
-    flex: 0;
-    min-width: 80px;
-  }
-
-  /* ─── EMPTY STATE ─── */
-  .empty-cart {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  .empty-cart-icon { font-size: 40px; margin-bottom: 12px; }
-
-  /* ─── LOADING ─── */
-  .loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 80px 20px;
-    color: var(--muted);
-    font-size: 14px;
-    gap: 12px;
-  }
-
-  .spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  /* ─── ANIMATIONS ─── */
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(24px) scale(0.98); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
-  /* Stagger cards */
-  .card:nth-child(1)  { animation-delay: 0.02s; }
-  .card:nth-child(2)  { animation-delay: 0.04s; }
-  .card:nth-child(3)  { animation-delay: 0.06s; }
-  .card:nth-child(4)  { animation-delay: 0.08s; }
-  .card:nth-child(5)  { animation-delay: 0.10s; }
-  .card:nth-child(6)  { animation-delay: 0.12s; }
-  .card:nth-child(7)  { animation-delay: 0.14s; }
-  .card:nth-child(8)  { animation-delay: 0.16s; }
-  .card:nth-child(9)  { animation-delay: 0.18s; }
-  .card:nth-child(10) { animation-delay: 0.20s; }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: var(--bg); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-  /* ─── SHOP MODAL ─── */
-  #shopModal {
-    position: fixed;
-    inset: 0;
-    background: rgba(5,8,16,0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    z-index: 1100;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #shopModal.open { display: flex; }
-
-  .shop-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 14px;
-  }
-
-  .shop-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--muted);
-  }
-
-  .shop-input {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-family: 'Sora', sans-serif;
-    font-size: 14px;
-    padding: 10px 14px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .shop-input:focus { border-color: var(--accent); }
-  .shop-input::placeholder { color: var(--muted); }
-
-  .shop-error {
-    font-size: 12px;
-    color: var(--danger);
-    margin-top: -6px;
-    margin-bottom: 6px;
-  }
-
-  /* ─── ORDER PREVIEW MODAL ─── */
-  #orderPreviewModal {
-    position: fixed;
-    inset: 0;
-    background: rgba(5,8,16,0.85);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    z-index: 1200;
-    align-items: center;
-    justify-content: center;
-  }
-
-  #orderPreviewModal.open { display: flex; }
-
-  .preview-shop-block {
-    background: rgba(0,229,176,0.06);
-    border: 1px solid rgba(0,229,176,0.2);
-    border-radius: 12px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .preview-shop-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-  }
-
-  .preview-shop-label {
-    color: var(--muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    min-width: 60px;
-  }
-
-  .preview-shop-value {
-    color: var(--text);
-    font-weight: 600;
-  }
-
-  .preview-items-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-
-  .preview-items {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    max-height: 260px;
-    overflow-y: auto;
-    margin-bottom: 16px;
-  }
-</style>
+  <title>Aaradhya Credit App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f0f0f;
+      color: white;
+      padding: 15px;
+    }
+
+    input {
+      padding: 12px;
+      width: 100%;
+      margin-bottom: 10px;
+      border-radius: 8px;
+      border: none;
+    }
+
+    button {
+      padding: 12px;
+      width: 100%;
+      background: white;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+
+    .card {
+      background: #1c1c1c;
+      padding: 15px;
+      border-radius: 12px;
+      margin-top: 15px;
+    }
+
+    .green { color: #00ff99; }
+    .orange { color: orange; }
+    .grey { color: grey; }
+    .red { color: red; }
+
+  </style>
 </head>
 
 <body>
 
-<header>
-  <div class="brand">
-    <div class="brand-icon">💊</div>
-    <div>
-      <div class="brand-name">Aaradhya Pharma</div>
-      <div class="brand-sub">Ordering Portal</div>
-    </div>
-  </div>
-  <button id="cartBtn" onclick="openCart()">
-    🛒 Cart
-    <span class="cart-badge" id="cartCount">0</span>
-  </button>
-</header>
+<h2>💳 Aaradhya Credit</h2>
 
-<div class="container">
-  <div class="section-header">
-    <span class="section-title">Products</span>
-    <span class="item-count" id="itemCount">—</span>
-  </div>
-
-  <div id="items" class="grid">
-    <div class="loading" style="grid-column:1/-1">
-      <div class="spinner"></div> Loading catalogue…
-    </div>
-  </div>
-
-  <div class="pagination">
-    <button onclick="prevPage()">← Prev</button>
-    <span id="pageNum">Page 1</span>
-    <button onclick="nextPage()">Next →</button>
-  </div>
+<div id="login">
+  <input type="text" id="mobile" placeholder="Enter Mobile Number">
+  <button onclick="loadBills()">Login</button>
 </div>
 
-<!-- CART MODAL -->
-<div id="cartModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>🛒 Order Summary</h3>
-    </div>
-    <div id="cartItems"></div>
-    <div class="cart-total">
-      <span class="cart-total-label">Grand Total</span>
-      <span class="cart-total-value" id="total">₹0</span>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-pdf" onclick="openShopModal()">✔ Place Order</button>
-      <button class="btn btn-close" onclick="closeCart()">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- SHOP DETAILS MODAL -->
-<div id="shopModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>📋 Shop Details</h3>
-    </div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;">Please enter your details to place the order.</p>
-    <div class="shop-field">
-      <label class="shop-label">Shop Name</label>
-      <input type="text" id="shopName" class="shop-input" placeholder="e.g. Ravi Medical Store" />
-    </div>
-    <div class="shop-field">
-      <label class="shop-label">Contact Number</label>
-      <input type="tel" id="shopContact" class="shop-input" placeholder="e.g. 9876543210" />
-    </div>
-    <div id="shopError" class="shop-error" style="display:none;">Please fill in both fields.</div>
-    <div class="modal-actions" style="margin-top:20px;">
-      <button class="btn btn-pdf" onclick="confirmShopAndProceed()">✔ Confirm & Proceed</button>
-      <button class="btn btn-close" onclick="closeShopModal()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ORDER PREVIEW MODAL -->
-<div id="orderPreviewModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>✅ Order Preview</h3>
-    </div>
-    <div id="orderPreviewBody"></div>
-    <div class="modal-actions" style="margin-top:20px;">
-      <button class="btn btn-pdf" onclick="downloadPDF()">⬇ Download PDF</button>
-      <button class="btn btn-wa" onclick="shareWhatsApp()">💬 Share on WhatsApp</button>
-      <button class="btn btn-close" onclick="closeOrderPreview()">Close</button>
-    </div>
-  </div>
+<div id="app" style="display:none;">
+  <h3>Your Bills</h3>
+  <div id="bills"></div>
 </div>
 
 <script>
 
-// ─────────────────────────────────────────────────────────────────
-// REPLACE your Apps Script with this CORS-safe version:
-//
-// function doGet(e) {
-//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-//   const rows = sheet.getDataRange().getValues();
-//   const callback = e && e.parameter && e.parameter.callback;
-//   const json = JSON.stringify(rows);
-//   if (callback) {
-//     return ContentService
-//       .createTextOutput(callback + "(" + json + ")")
-//       .setMimeType(ContentService.MimeType.JAVASCRIPT);
-//   }
-//   return ContentService
-//     .createTextOutput(json)
-//     .setMimeType(ContentService.MimeType.JSON);
-// }
-//
-// function doPost(e) {
-//   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-//   const updates = JSON.parse(e.postData.contents);
-//   updates.forEach(u => sheet.getRange(u.row, 3).setValue(u.stock));
-//   return ContentService.createTextOutput("OK");
-// }
-// ─────────────────────────────────────────────────────────────────
+const API_URL = "https://opensheet.elk.sh/11orq7_xPP6119UFEy8Jlx4CcHey1AtSmunnATlfT8p0/Sheet1";
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys0kg-vLBebvLNWUtpE3qFYhCdcyX2H-Cc4ixHLBZF7iGltPkzWz_3fEWxaNN4hVsd-A/exec";
-
-const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIA-e9LgjI3ZEthvS_-N-XsurvTJu_XrxpWnIypbqMXNXLB95DaFG1qXv9kvTrrU4_0Fw5ZjVDxxZc/pub?gid=1990410876&single=true&output=csv";
-
-let data = [];
-let cart = [];
-let currentPage = 1;
-const perPage = 10;
-
-// ─── HELPERS ───
-
-function formatExpiry(val) {
-  if (!val) return '—';
-  if (typeof val === 'string' && isNaN(Number(val))) return val.trim();
-  const serial = Number(val);
-  if (!serial) return String(val).trim();
-  const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = date.getUTCFullYear();
-  return `${mm}/${yyyy}`;
+function daysBetween(date) {
+  let d1 = new Date(date);
+  let d2 = new Date();
+  return Math.floor((d2 - d1) / (1000*60*60*24));
 }
 
-function parseStock(val) {
-  const n = parseInt(val);
-  return isNaN(n) ? 0 : n;
-}
+function calculate(bill) {
+  let days = daysBetween(bill["Date"]);
+  let amount = parseFloat(bill["Amount"]);
 
-// JSONP loader — bypasses CORS entirely
-function fetchViaJSONP(url) {
-  return new Promise((resolve, reject) => {
-    const cbName = '__gs_cb_' + Date.now();
-    const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('JSONP timeout'));
-    }, 10000);
+  let discount = 0;
+  let points = 0;
+  let interest = 0;
+  let status = "";
 
-    function cleanup() {
-      clearTimeout(timeout);
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    }
-
-    window[cbName] = function(data) {
-      cleanup();
-      resolve(data);
-    };
-
-    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
-    script.onerror = () => { cleanup(); reject(new Error('Script load error')); };
-    document.head.appendChild(script);
-  });
-}
-
-// CSV fallback parser
-function parseCSV(text) {
-  return text.split('\n').slice(1)
-    .filter(row => row.trim())
-    .map((row, i) => {
-      const cols = row.split(',');
-      const stock = parseStock(cols[2]);
-      return {
-        rowIndex:      i + 2,
-        dataIndex:     i,
-        name:          String(cols[1] || '').trim(),
-        stock:         stock,
-        originalStock: stock,
-        mrp:           String(cols[4] || '').trim(),
-        rate:          String(cols[5] || '').trim(),
-        batch:         String(cols[8] || '').trim(),
-        expiry:        formatExpiry(String(cols[9] || '').trim())
-      };
-    })
-    .filter(item => item.name !== '');
-}
-
-async function loadData() {
-  // Use allorigins proxy to bypass CORS — works whether file is local or hosted
-  const PROXY = "https://api.allorigins.win/raw?url=";
-  const csvProxied = PROXY + encodeURIComponent(sheetURL);
-
-  try {
-    // ── Try JSONP first (reads live stock from sheet via Apps Script)
-    try {
-      const rows = await fetchViaJSONP(APPS_SCRIPT_URL);
-      data = rows.slice(1)
-        .filter(cols => cols[1] && String(cols[1]).trim() !== '')
-        .map((cols, i) => {
-          const stock = parseStock(cols[2]);
-          return {
-            rowIndex:      i + 2,
-            dataIndex:     i,
-            name:          String(cols[1] || '').trim(),
-            stock:         stock,
-            originalStock: stock,
-            mrp:           String(cols[4] || '').trim(),
-            rate:          String(cols[5] || '').trim(),
-            batch:         String(cols[8] || '').trim(),
-            expiry:        formatExpiry(cols[9])
-          };
-        });
-      console.log("✅ Loaded via JSONP:", data.length, "items");
-      render();
-      return;
-    } catch (jsonpErr) {
-      console.warn("⚠ JSONP failed:", jsonpErr.message, "— trying CSV via proxy...");
-    }
-
-    // ── Fallback: CSV via CORS proxy
-    const res = await fetch(csvProxied);
-    if (!res.ok) throw new Error("Proxy fetch failed: " + res.status);
-    const text = await res.text();
-    data = parseCSV(text);
-    console.log("✅ Loaded via CSV proxy:", data.length, "items");
-    render();
-
-  } catch (err) {
-    console.error("Load error:", err);
-    document.getElementById("items").innerHTML =
-      `<div class="loading" style="grid-column:1/-1;color:var(--danger)">
-        ⚠ Could not load products.<br>
-        <small style="color:var(--muted);font-size:11px;">
-          Make sure you are connected to the internet, then reload the page.
-        </small>
-      </div>`;
-  }
-}
-
-// ─── RENDER ITEMS ───
-function render() {
-  const start = (currentPage - 1) * perPage;
-  const pageData = data.slice(start, start + perPage);
-
-  const container = document.getElementById("items");
-  container.innerHTML = "";
-
-  document.getElementById("itemCount").textContent = data.length + " items";
-
-  pageData.forEach((item, pagePos) => {
-    let cartItem = cart.find(i => i.dataIndex === item.dataIndex);
-    let qty = cartItem ? cartItem.qty : 0;
-
-    const div = document.createElement("div");
-    div.className = "card";
-    div.dataset.idx = item.dataIndex;
-
-    const stockNum = parseStock(item.stock);
-    const stockClass = stockNum <= 0 ? 'pill-val stock-zero' : stockNum <= 10 ? 'pill-val stock-low' : 'pill-val';
-
-    div.innerHTML = `
-      <h4>${item.name}</h4>
-      <div class="card-prices">
-        <div class="price-block">
-          <span class="meta-label">Rate</span>
-          <span class="price-val">₹${item.rate}</span>
-        </div>
-        <div class="price-divider"></div>
-        <div class="price-block">
-          <span class="meta-label">MRP</span>
-          <span class="mrp-val">₹${item.mrp}</span>
-        </div>
-      </div>
-      <div class="card-info">
-        <div class="info-pill">
-          <span class="pill-label">Stock</span>
-          <span class="${stockClass}" data-stock>${stockNum}</span>
-        </div>
-        <div class="info-pill">
-          <span class="pill-label">Batch</span>
-          <span class="pill-val">${item.batch}</span>
-        </div>
-        <div class="info-pill">
-          <span class="pill-label">Expiry</span>
-          <span class="pill-val">${item.expiry}</span>
-        </div>
-      </div>
-      <div class="qty-box">
-        <button onclick='decreaseQty(${item.dataIndex})'>−</button>
-        <span data-qty>${qty}</span>
-        <button onclick='increaseQty(${item.dataIndex})'>+</button>
-      </div>
-    `;
-
-    container.appendChild(div);
-  });
-
-  document.getElementById("pageNum").innerText = "Page " + currentPage;
-}
-
-// ─── PAGINATION ───
-function nextPage() {
-  if ((currentPage * perPage) < data.length) {
-    currentPage++;
-    render();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
-
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    render();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-}
-
-// ─── INCREASE QTY ───
-function increaseQty(idx) {
-  const item = data[idx];
-  if (!item) return;
-
-  const currentStock = parseStock(item.stock);
-  if (currentStock <= 0) return;
-
-  let existing = cart.find(i => i.dataIndex === idx);
-  if (existing) {
-    existing.qty++;
-  } else {
-    cart.push({ ...item, qty: 1 });
+  if (days <= 15) {
+    discount = amount * 0.02;
+    points = 100;
+    status = "green";
+  } 
+  else if (days <= 30) {
+    points = 50;
+    status = "orange";
+  } 
+  else if (days <= 45) {
+    status = "grey";
+  } 
+  else if (days > 60) {
+    interest = amount * 0.24/365 * (days - 60);
+    status = "red";
   }
 
-  item.stock = currentStock - 1;
-  updateCartCount();
-  updateCardDisplay(idx);
+  return {days, discount, points, interest, status};
 }
 
-// ─── DECREASE QTY ───
-function decreaseQty(idx) {
-  const item = data[idx];
-  if (!item) return;
+async function loadBills() {
+  let mobile = document.getElementById("mobile").value.trim();
 
-  let cartIdx = cart.findIndex(i => i.dataIndex === idx);
-  if (cartIdx === -1) return;
-
-  cart[cartIdx].qty--;
-  item.stock = parseStock(item.stock) + 1;
-
-  if (cart[cartIdx].qty <= 0) cart.splice(cartIdx, 1);
-
-  updateCartCount();
-  updateCardDisplay(idx);
-}
-
-// ─── UPDATE ONLY THE AFFECTED CARD ───
-function updateCardDisplay(idx) {
-  const item = data[idx];
-  const cartItem = cart.find(i => i.dataIndex === idx);
-  const qty = cartItem ? cartItem.qty : 0;
-  const stock = parseStock(item.stock);
-
-  const card = document.querySelector(`.card[data-idx="${idx}"]`);
-  if (!card) return;
-
-  const qtySpan = card.querySelector('[data-qty]');
-  const stockSpan = card.querySelector('[data-stock]');
-  if (qtySpan) qtySpan.textContent = qty;
-  if (stockSpan) {
-    stockSpan.textContent = stock;
-    stockSpan.className = stock <= 0 ? 'pill-val stock-zero' : stock <= 10 ? 'pill-val stock-low' : 'pill-val';
-  }
-}
-
-// ─── CART COUNT ───
-function updateCartCount() {
-  let totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-  document.getElementById("cartCount").innerText = totalQty;
-}
-
-// ─── OPEN CART ───
-function openCart() {
-  const div = document.getElementById("cartItems");
-  div.innerHTML = "";
-  let total = 0;
-
-  if (cart.length === 0) {
-    div.innerHTML = `<div class="empty-cart"><div class="empty-cart-icon">🛒</div>Your cart is empty</div>`;
-  } else {
-    cart.forEach(item => {
-      let value = item.rate * item.qty;
-      total += value;
-      div.innerHTML += `
-        <div class="cart-row">
-          <span class="cart-row-name">${item.name}</span>
-          <span class="cart-row-qty">× ${item.qty}</span>
-          <span class="cart-row-price">₹${value}</span>
-        </div>`;
-    });
-  }
-
-  document.getElementById("total").innerText = "₹" + total;
-  const modal = document.getElementById("cartModal");
-  modal.style.display = "flex";
-  modal.classList.add("open");
-}
-
-function closeCart() {
-  const modal = document.getElementById("cartModal");
-  modal.style.display = "none";
-  modal.classList.remove("open");
-}
-
-// ─── SHOP MODAL ───
-let currentShopName = '';
-let currentShopContact = '';
-
-function openShopModal() {
-  if (cart.length === 0) return;
-  document.getElementById('shopError').style.display = 'none';
-  document.getElementById('shopName').value = currentShopName;
-  document.getElementById('shopContact').value = currentShopContact;
-  document.getElementById('shopModal').style.display = 'flex';
-  document.getElementById('shopModal').classList.add('open');
-}
-
-function closeShopModal() {
-  document.getElementById('shopModal').style.display = 'none';
-  document.getElementById('shopModal').classList.remove('open');
-}
-
-function confirmShopAndProceed() {
-  const name = document.getElementById('shopName').value.trim();
-  const contact = document.getElementById('shopContact').value.trim();
-  if (!name || !contact) {
-    document.getElementById('shopError').style.display = 'block';
+  if (!mobile) {
+    alert("Enter mobile number");
     return;
   }
-  currentShopName = name;
-  currentShopContact = contact;
-  closeShopModal();
 
-  // Write updated stock back to sheet
-  if (APPS_SCRIPT_URL) {
-    const updates = cart.map(cartItem => {
-      const d = data[cartItem.dataIndex];
-      return { row: d.rowIndex, stock: parseStock(d.stock) };
-    });
-    fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      body: JSON.stringify(updates)
-    }).catch(err => console.warn("Stock sync failed:", err));
-  }
+  document.getElementById("login").style.display = "none";
+  document.getElementById("app").style.display = "block";
 
-  showOrderPreview();
-}
+  let res = await fetch(API_URL);
+  let data = await res.json();
 
-// ─── ORDER PREVIEW ───
-function showOrderPreview() {
-  const body = document.getElementById('orderPreviewBody');
-  let total = 0;
-  let itemsHTML = '';
+  let filtered = data.filter(b => 
+    b["Customer Mobile"] == mobile && 
+    b["Paid"] != "TRUE"
+  );
 
-  cart.forEach(item => {
-    let value = item.rate * item.qty;
-    total += value;
-    itemsHTML += `
-      <div class="cart-row">
-        <span class="cart-row-name">${item.name}</span>
-        <span class="cart-row-qty">× ${item.qty}</span>
-        <span class="cart-row-price">₹${value}</span>
-      </div>`;
-  });
+  let html = "";
 
-  body.innerHTML = `
-    <div class="preview-shop-block">
-      <div class="preview-shop-row">
-        <span class="preview-shop-label">Shop</span>
-        <span class="preview-shop-value">${currentShopName}</span>
+  filtered.forEach(bill => {
+    let calc = calculate(bill);
+
+    html += `
+      <div class="card">
+        <h3>${bill["Bill No"]}</h3>
+        <p>Amount: ₹${bill["Amount"]}</p>
+        <p>Days Passed: ${calc.days}</p>
+
+        <p class="${calc.status}">
+          ${calc.days <= 15 ? "CD Discount Active" : ""}
+          ${calc.days > 15 && calc.days <= 30 ? "Rewards Only" : ""}
+          ${calc.days > 30 && calc.days <= 45 ? "No Benefits" : ""}
+          ${calc.days > 60 ? "Interest Running" : ""}
+        </p>
+
+        <p>Discount: ₹${calc.discount.toFixed(2)}</p>
+        <p>Points: ${calc.points}</p>
+        <p>Interest: ₹${calc.interest.toFixed(2)}</p>
+
+        <button onclick="payBill('${bill["Bill No"]}')">
+          Pay Now
+        </button>
       </div>
-      <div class="preview-shop-row">
-        <span class="preview-shop-label">Contact</span>
-        <span class="preview-shop-value">${currentShopContact}</span>
-      </div>
-    </div>
-    <div class="preview-items-title">Ordered Items</div>
-    <div class="preview-items">${itemsHTML}</div>
-    <div class="cart-total">
-      <span class="cart-total-label">Grand Total</span>
-      <span class="cart-total-value">₹${total}</span>
-    </div>
-  `;
-
-  document.getElementById('orderPreviewModal').style.display = 'flex';
-  document.getElementById('orderPreviewModal').classList.add('open');
-}
-
-function closeOrderPreview() {
-  document.getElementById('orderPreviewModal').style.display = 'none';
-  document.getElementById('orderPreviewModal').classList.remove('open');
-}
-
-// ─── PDF DOWNLOAD ───
-function downloadPDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  let y = 14;
-  doc.setFontSize(16);
-  doc.text("Aaradhya Pharma - Order", 10, y); y += 10;
-  doc.setFontSize(11);
-  doc.text(`Shop: ${currentShopName}`, 10, y); y += 7;
-  doc.text(`Contact: ${currentShopContact}`, 10, y); y += 10;
-  doc.setFontSize(12);
-
-  let total = 0;
-  cart.forEach(item => {
-    let value = item.rate * item.qty;
-    total += value;
-    doc.text(`${item.name} - Qty: ${item.qty} - Rs.${value}`, 10, y);
-    y += 8;
+    `;
   });
 
-  y += 4;
-  doc.setFontSize(13);
-  doc.text("Total: Rs." + total, 10, y);
-  doc.save("order.pdf");
+  document.getElementById("bills").innerHTML = html || "<p>No bills found</p>";
 }
 
-// ─── WHATSAPP SHARE ───
-function shareWhatsApp() {
-  let text = `*Aaradhya Pharma Order*\nShop: ${currentShopName}\nContact: ${currentShopContact}\n\n`;
-  let total = 0;
-
-  cart.forEach(item => {
-    let value = item.rate * item.qty;
-    total += value;
-    text += `${item.name} - Qty: ${item.qty} - Rs.${value}\n`;
-  });
-
-  text += `\n*Total: Rs.${total}*`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+function payBill(id) {
+  alert("Simulated Payment for " + id);
 }
-
-// ─── INIT ───
-loadData();
 
 </script>
 
