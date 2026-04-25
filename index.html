@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AAradhya Flipbook</title>
 
-<!-- PageFlip Library -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/page-flip/dist/css/page-flip.min.css">
 
 <style>
@@ -67,37 +66,36 @@ button {
   <input type="file" id="upload" multiple accept="image/*">
   <br><br>
   <button onclick="addImages()">Upload Photos</button>
-  <button onclick="saveFlipbook()">Save Flipbook</button>
+  <button onclick="saveFlipbook()">Save (Browser)</button>
+  <button onclick="saveFlipbookFile()">Save Flipbook File</button>
+  <button onclick="loadFlipbookFile()">Load Flipbook</button>
   <button onclick="downloadPDF()">Download PDF</button>
+  <input type="file" id="loadFile" style="display:none" accept=".json">
 </div>
 
 <div id="book"></div>
 
-<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
 
-// Initialize Flipbook
-let pageFlip = new St.PageFlip(
-  document.getElementById("book"),
-  {
-    width: 300,
-    height: 500,
-    size: "stretch",
-    maxShadowOpacity: 0.5,
-    showCover: true,
-    mobileScrollSupport: true
-  }
-);
+// INIT FLIPBOOK
+let pageFlip = new St.PageFlip(document.getElementById("book"), {
+  width: 300,
+  height: 500,
+  size: "stretch",
+  maxShadowOpacity: 0.5,
+  showCover: true,
+  mobileScrollSupport: true
+});
 
-// Load saved images OR default
+// LOAD SAVED OR DEFAULT
 let savedImages = JSON.parse(localStorage.getItem("flipbook")) || [
-  "https://via.placeholder.com/300x500?text=Welcome+to+AAradhya+Flipbook"
+  "https://via.placeholder.com/300x500?text=AAradhya+Flipbook"
 ];
 
-// Load pages into flipbook
+// LOAD PAGES
 function loadPages(images) {
   let pageElements = images.map(src => {
     let div = document.createElement("div");
@@ -112,7 +110,7 @@ function loadPages(images) {
 
 loadPages(savedImages);
 
-// Upload images
+// UPLOAD IMAGES
 function addImages() {
   let input = document.getElementById("upload");
   let files = input.files;
@@ -123,32 +121,75 @@ function addImages() {
     reader.onload = function(e) {
       savedImages.push(e.target.result);
       loadPages(savedImages);
-      saveFlipbook(); // auto save
+      saveFlipbook();
     };
 
     reader.readAsDataURL(files[i]);
   }
 }
 
-// Save flipbook (Local Storage)
+// SAVE IN BROWSER
 function saveFlipbook() {
   localStorage.setItem("flipbook", JSON.stringify(savedImages));
-  alert("✅ Flipbook Saved Successfully!");
+  alert("✅ Saved in browser");
 }
 
-// Download flipbook as PDF
-function downloadPDF() {
-  let element = document.getElementById("book");
+// SAVE AS FILE
+function saveFlipbookFile() {
+  const dataStr = JSON.stringify(savedImages);
+  const blob = new Blob([dataStr], { type: "application/json" });
 
-  let opt = {
-    margin:       0,
-    filename:     'AAradhya_Flipbook.pdf',
-    image:        { type: 'jpeg', quality: 1 },
-    html2canvas:  { scale: 2 },
-    jsPDF:        { unit: 'px', format: [300, 500], orientation: 'portrait' }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "AAradhya_Flipbook.json";
+  a.click();
+}
+
+// LOAD FILE
+function loadFlipbookFile() {
+  document.getElementById("loadFile").click();
+}
+
+document.getElementById("loadFile").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(event) {
+    savedImages = JSON.parse(event.target.result);
+    loadPages(savedImages);
+    saveFlipbook();
   };
 
-  html2pdf().set(opt).from(element).save();
+  reader.readAsText(file);
+});
+
+// DOWNLOAD PDF (MULTI PAGE)
+function downloadPDF() {
+  const { jsPDF } = window.jspdf;
+  let pdf = new jsPDF();
+
+  let i = 0;
+
+  function addPage() {
+    if (i >= savedImages.length) {
+      pdf.save("AAradhya_Flipbook.pdf");
+      return;
+    }
+
+    let img = new Image();
+    img.src = savedImages[i];
+
+    img.onload = function() {
+      if (i > 0) pdf.addPage();
+
+      pdf.addImage(img, 'JPEG', 10, 10, 180, 260);
+
+      i++;
+      addPage();
+    };
+  }
+
+  addPage();
 }
 
 </script>
