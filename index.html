@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AAradhya Flipbook</title>
 
+<!-- PageFlip Library -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/page-flip/dist/css/page-flip.min.css">
 
 <style>
@@ -18,7 +19,7 @@ body {
 h1 {
   background: #2e7d32;
   color: white;
-  padding: 10px;
+  padding: 12px;
   margin: 0;
 }
 
@@ -51,7 +52,9 @@ button {
   color: white;
   border: none;
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 6px;
+  margin: 5px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -62,15 +65,21 @@ button {
 
 <div class="upload-box">
   <input type="file" id="upload" multiple accept="image/*">
+  <br><br>
   <button onclick="addImages()">Upload Photos</button>
+  <button onclick="saveFlipbook()">Save Flipbook</button>
+  <button onclick="downloadPDF()">Download PDF</button>
 </div>
 
 <div id="book"></div>
 
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <script>
 
+// Initialize Flipbook
 let pageFlip = new St.PageFlip(
   document.getElementById("book"),
   {
@@ -83,14 +92,12 @@ let pageFlip = new St.PageFlip(
   }
 );
 
-let pages = [];
-
-// 👉 Default images (ADD YOUR EXISTING IMAGES HERE)
-let defaultImages = [
-  "https://via.placeholder.com/300x500?text=Page+1",
-  "https://via.placeholder.com/300x500?text=Page+2"
+// Load saved images OR default
+let savedImages = JSON.parse(localStorage.getItem("flipbook")) || [
+  "https://via.placeholder.com/300x500?text=Welcome+to+AAradhya+Flipbook"
 ];
 
+// Load pages into flipbook
 function loadPages(images) {
   let pageElements = images.map(src => {
     let div = document.createElement("div");
@@ -103,9 +110,9 @@ function loadPages(images) {
   pageFlip.loadFromHTML(pageElements);
 }
 
-loadPages(defaultImages);
+loadPages(savedImages);
 
-// 📤 Upload function
+// Upload images
 function addImages() {
   let input = document.getElementById("upload");
   let files = input.files;
@@ -114,12 +121,34 @@ function addImages() {
     let reader = new FileReader();
 
     reader.onload = function(e) {
-      defaultImages.push(e.target.result);
-      loadPages(defaultImages);
+      savedImages.push(e.target.result);
+      loadPages(savedImages);
+      saveFlipbook(); // auto save
     };
 
     reader.readAsDataURL(files[i]);
   }
+}
+
+// Save flipbook (Local Storage)
+function saveFlipbook() {
+  localStorage.setItem("flipbook", JSON.stringify(savedImages));
+  alert("✅ Flipbook Saved Successfully!");
+}
+
+// Download flipbook as PDF
+function downloadPDF() {
+  let element = document.getElementById("book");
+
+  let opt = {
+    margin:       0,
+    filename:     'AAradhya_Flipbook.pdf',
+    image:        { type: 'jpeg', quality: 1 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'px', format: [300, 500], orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(element).save();
 }
 
 </script>
