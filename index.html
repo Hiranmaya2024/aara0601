@@ -404,6 +404,27 @@ function doFilter() {
   render(true);
 }
 
+/* ── GOOGLE DRIVE URL CONVERTER ── */
+function toDirectImgUrl(url) {
+  if (!url) return '';
+  url = url.trim();
+
+  // Format 1: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+  var m1 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return 'https://drive.google.com/thumbnail?id=' + m1[1] + '&sz=w400';
+
+  // Format 2: https://drive.google.com/open?id=FILE_ID
+  var m2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (m2) return 'https://drive.google.com/thumbnail?id=' + m2[1] + '&sz=w400';
+
+  // Format 3: already a direct thumbnail or uc link
+  var m3 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m3) return 'https://drive.google.com/thumbnail?id=' + m3[1] + '&sz=w400';
+
+  // Not a Drive link — use as-is (regular http image URL)
+  return url;
+}
+
 /* ── RENDER ── */
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -428,13 +449,19 @@ function render(reset) {
     d.className = 'item';
     d.id = 'card-'+p.id;
 
+    // Convert any Google Drive share link to direct image URL
+    var imgSrc = '';
+    if (p.imageUrl && p.imageUrl.length > 4) {
+      imgSrc = toDirectImgUrl(p.imageUrl);
+    }
+
     // Build image area using createElement (avoids URL encoding bugs)
     var imgWrap = document.createElement('div');
     imgWrap.className = 'item-img-wrap';
-    if (p.imageUrl && p.imageUrl.length > 4) {
+    if (imgSrc) {
       var img = document.createElement('img');
       img.alt = p.name;
-      img.src = p.imageUrl;
+      img.src = imgSrc;
       img.onerror = function(){ 
         this.parentNode.innerHTML = '<div class="item-img-blank">💊</div>'; 
       };
