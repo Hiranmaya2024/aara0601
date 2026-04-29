@@ -1,4 +1,11 @@
 <!DOCTYPE html>
+<!-- ╔══════════════════════════════════════════════════╗
+     ║   Aaradhya Pharmaceuticals — Order App          ║
+     ║   Version : 1.1.0                               ║
+     ║   Released: 2026-04-29                          ║
+     ║   Changes  : Card layout — image left,          ║
+     ║              content right (horizontal layout)  ║
+     ╚══════════════════════════════════════════════════╝ -->
 <html lang="en" data-theme="pharma">
 <head>
 <meta charset="UTF-8">
@@ -50,7 +57,9 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 .header-top { display:flex; align-items:center; justify-content:space-between; padding:14px 16px 10px; gap:10px; }
 .brand { display:flex; align-items:center; gap:9px; flex:1; min-width:0; }
 .brand-icon { font-size:1.6rem; flex-shrink:0; }
-.brand-name { font-family:var(--font-d); font-size:1.05rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brand-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.brand-name { font-family:var(--font-d); font-size:1.05rem; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.brand-version { font-size:0.65rem; font-weight:600; color:rgba(255,255,255,0.45); letter-spacing:0.06em; }
 .theme-btn { background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.25); border-radius:8px; padding:7px 11px; font-family:var(--font); font-size:0.8rem; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; transition:var(--tr); }
 .theme-btn:hover { background:rgba(255,255,255,0.25); }
 
@@ -86,21 +95,56 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 @media(min-width:860px)  { #list{grid-template-columns:repeat(3,1fr); padding:16px; gap:14px;} }
 @media(min-width:1100px) { #list{grid-template-columns:repeat(4,1fr);} }
 
+/* CARD IMAGE */
+.item-img-wrap {
+  width:88px; height:88px;
+  border-radius:10px; overflow:hidden;
+  background:var(--body-bg);
+  border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.item-img-wrap img {
+  width:100%; height:100%; object-fit:contain;
+  display:block;
+}
+.item-img-blank {
+  width:100%; height:100%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; color:var(--text-secondary);
+}
+.item-img-blank span { font-size:1.5rem; opacity:0.35; }
+.item-img-blank small { font-size:0.6rem; font-weight:500; opacity:0.45; text-align:center; line-height:1.3; }
+
 /* CARD */
-.item { background:var(--card-bg); border-radius:var(--radius); box-shadow:var(--card-shadow); padding:14px; border:1px solid var(--border); display:flex; flex-direction:column; gap:5px; animation:cardIn 0.25s ease both; transition:box-shadow var(--tr),transform var(--tr); }
+.item {
+  background:var(--card-bg); border-radius:var(--radius);
+  box-shadow:var(--card-shadow); padding:12px;
+  border:1px solid var(--border);
+  display:flex; flex-direction:row; gap:11px;
+  align-items:stretch;
+  animation:cardIn 0.25s ease both;
+  transition:box-shadow var(--tr),transform var(--tr);
+}
 .item:hover { box-shadow:0 6px 24px rgba(10,46,82,0.15); transform:translateY(-1px); }
 @keyframes cardIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-.item-name { font-weight:700; font-size:0.95rem; line-height:1.3; color:var(--text-primary); }
-.item-company { font-size:0.72rem; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; background:var(--accent-light); display:inline-block; padding:2px 8px; border-radius:30px; margin-top:1px; }
-.item-pack { font-size:0.78rem; color:var(--text-secondary); background:var(--body-bg); border:1px solid var(--border); border-radius:6px; padding:3px 8px; font-weight:500; display:inline-block; margin-top:2px; }
-.item-composition {
-  font-size:0.76rem; color:var(--text-secondary); font-style:italic;
-  line-height:1.45; border-left:2px solid var(--accent);
-  padding:3px 0 3px 8px; margin-top:3px; word-break:break-word;
+
+/* RIGHT CONTENT COLUMN */
+.item-content {
+  display:flex; flex-direction:column; gap:4px;
+  flex:1; min-width:0;
 }
-.price-row { display:flex; align-items:baseline; gap:8px; margin-top:4px; }
-.rate-price { font-size:1.05rem; font-weight:700; color:var(--text-primary); }
-.mrp-price { font-size:0.8rem; color:var(--text-secondary); text-decoration:line-through; }
+.item-name { font-weight:700; font-size:0.9rem; line-height:1.3; color:var(--text-primary); }
+.item-company { font-size:0.68rem; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.04em; background:var(--accent-light); display:inline-block; padding:1px 7px; border-radius:30px; }
+.item-pack { font-size:0.74rem; color:var(--text-secondary); background:var(--body-bg); border:1px solid var(--border); border-radius:5px; padding:2px 7px; font-weight:500; display:inline-block; }
+.item-composition {
+  font-size:0.72rem; color:var(--text-secondary); font-style:italic;
+  line-height:1.4; border-left:2px solid var(--accent);
+  padding:2px 0 2px 6px; word-break:break-word;
+}
+.price-row { display:flex; align-items:baseline; gap:6px; margin-top:2px; }
+.rate-price { font-size:0.98rem; font-weight:700; color:var(--text-primary); }
+.mrp-price { font-size:0.75rem; color:var(--text-secondary); text-decoration:line-through; }
 .spacer { flex:1; }
 
 /* CONTROLS */
@@ -164,7 +208,10 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
   <div class="header-top">
     <div class="brand">
       <span class="brand-icon" id="brandIcon">💊</span>
-      <span class="brand-name">Aaradhya Pharmaceuticals</span>
+      <div class="brand-text">
+        <span class="brand-name">Aaradhya Pharmaceuticals</span>
+        <span class="brand-version">v1.1.0</span>
+      </div>
     </div>
     <button class="theme-btn" onclick="openTheme()">🎨 Theme</button>
   </div>
@@ -279,7 +326,7 @@ function parseCSV(text) {
 var products=[], filtered=[], cart={}, visible=12;
 var COL = { name:0, pack:1, mrp:3, rate:4, company:5, composition:6 }; // default guess
 
-var CSV_URL = 'https://docs.google.com/spreadsheets/d/1OlY-BMsluyLrGD1lpv9dKa2rRKFhl1Q9/export?format=csv';
+var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkoAFrWFkerY629v3zhsV5q3NggnlHgSgBqZ2CnAK3n0riqW24dZN3iWm_JJz-XPf9Dtgkayaey-Vg/pub?output=csv';
 
 fetch(CSV_URL)
   .then(function(r){ return r.text(); })
@@ -317,11 +364,16 @@ fetch(CSV_URL)
         mrp:         parseFloat((r[COL.mrp]  || '').replace(/[^\d.]/g,'')) || 0,
         rate:        parseFloat((r[COL.rate] || '').replace(/[^\d.]/g,'')) || 0,
         company:     (r[COL.company]     || '').trim(),
-        composition: (r[COL.composition] || '').trim()
+        composition: (r[COL.composition] || '').trim(),
+        imageUrl:    (r[8]              || '').trim()
       };
     }).filter(function(p){ return p.name; });
 
     console.log('Sample product:', products[0]);
+    if (products[0]) {
+      console.log('Raw image URL col I:', JSON.stringify(products[0].imageUrl));
+      console.log('Converted image URL:', toDirectImgUrl(products[0].imageUrl));
+    }
 
     filtered = products.slice();
     buildDropdowns();
@@ -383,6 +435,23 @@ function doFilter() {
   render(true);
 }
 
+/* ── IMAGE URL CONVERTER ── */
+function toDirectImgUrl(url) {
+  if (!url) return '';
+  url = url.trim();
+  // Direct lh3 link — works as img src
+  if (url.indexOf('lh3.googleusercontent.com') > -1) {
+    return url.replace(/=[wsh]\d+[^"]*$/, '') + '=w400';
+  }
+  // Google Drive
+  var m1 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return 'https://drive.google.com/thumbnail?id=' + m1[1] + '&sz=w400';
+  var m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return 'https://drive.google.com/thumbnail?id=' + m2[1] + '&sz=w400';
+  // Google Photos short links cannot be embedded — return empty
+  return '';
+}
+
 /* ── RENDER ── */
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -403,26 +472,48 @@ function render(reset) {
     var p = slice[i];
     if (document.getElementById('card-'+p.id)) continue;
 
+    var d = document.createElement('div');
+    d.className = 'item';
+    d.id = 'card-'+p.id;
+
+    // Build image area
+    var imgWrap = document.createElement('div');
+    imgWrap.className = 'item-img-wrap';
+    var converted = toDirectImgUrl(p.imageUrl || '');
+    if (converted) {
+      var img = document.createElement('img');
+      img.src = converted;
+      img.alt = p.name;
+      img.onerror = function(){
+        this.parentNode.innerHTML = '<div class="item-img-blank"><span>📷</span><small>Image not available</small></div>';
+      };
+      imgWrap.appendChild(img);
+    } else {
+      imgWrap.innerHTML = '<div class="item-img-blank"><span>📷</span><small>Image not available</small></div>';
+    }
+    d.appendChild(imgWrap);
+
     var compHtml = '';
     if (p.composition && p.composition.length > 0) {
       compHtml = '<div class="item-composition">🧪 ' + esc(p.composition) + '</div>';
     }
 
-    var d = document.createElement('div');
-    d.className = 'item';
-    d.id = 'card-'+p.id;
-    d.innerHTML =
-      '<div class="item-name">'    + esc(p.name)    + '</div>' +
-      '<div class="item-company">' + esc(p.company) + '</div>' +
-      '<div><span class="item-pack">📦 ' + esc(p.pack) + '</span></div>' +
-      compHtml +
-      '<div class="price-row">' +
-        '<span class="rate-price">₹' + p.rate.toFixed(2) + '</span>' +
-        '<span class="mrp-price">MRP ₹' + p.mrp.toFixed(2) + '</span>' +
-      '</div>' +
-      '<div class="spacer"></div>' +
-      '<div class="controls" id="ctrl-'+p.id+'">' + mkCtrl(p.id, cart[p.id]||0) + '</div>';
-
+    var rest = document.createElement('div');
+    rest.style.cssText = 'display:contents';
+    rest.innerHTML =
+      '<div class="item-content">' +
+        '<div class="item-name">'    + esc(p.name)    + '</div>' +
+        '<div class="item-company">' + esc(p.company) + '</div>' +
+        '<span class="item-pack">📦 ' + esc(p.pack) + '</span>' +
+        compHtml +
+        '<div class="price-row">' +
+          '<span class="rate-price">₹' + p.rate.toFixed(2) + '</span>' +
+          '<span class="mrp-price">MRP ₹' + p.mrp.toFixed(2) + '</span>' +
+        '</div>' +
+        '<div class="spacer"></div>' +
+        '<div class="controls" id="ctrl-'+p.id+'">' + mkCtrl(p.id, cart[p.id]||0) + '</div>' +
+      '</div>';
+    d.appendChild(rest);
     list.appendChild(d);
   }
 }
@@ -484,4 +575,3 @@ function sendOrder() {
 </script>
 </body>
 </html>
-
