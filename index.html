@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <!-- ╔══════════════════════════════════════════════════╗
      ║   Aaradhya Pharmaceuticals — Order App          ║
-     ║   Version : 1.1.0                               ║
+     ║   Version : 1.2.0                               ║
      ║   Released: 2026-04-29                          ║
-     ║   Changes  : Card layout — image left,          ║
-     ║              content right (horizontal layout)  ║
+     ║   Changes  : Image fills full card height       ║
+     ║              Tap image → lightbox viewer        ║
+     ║              Zoom in/out + pinch-to-zoom        ║
+     ║              Reset zoom + close button          ║
      ╚══════════════════════════════════════════════════╝ -->
 <html lang="en" data-theme="pharma">
 <head>
@@ -97,24 +99,84 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 
 /* CARD IMAGE */
 .item-img-wrap {
-  width:88px; height:88px;
+  width:100px; 
+  align-self:stretch;
   border-radius:10px; overflow:hidden;
   background:var(--body-bg);
   border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
+  flex-shrink:0; cursor:pointer;
+  position:relative;
 }
 .item-img-wrap img {
-  width:100%; height:100%; object-fit:contain;
-  display:block;
+  width:100%; height:100%; object-fit:cover;
+  display:block; transition:transform 0.2s;
 }
+.item-img-wrap:hover img { transform:scale(1.04); }
+.item-img-wrap .img-tap-hint {
+  position:absolute; bottom:4px; right:4px;
+  background:rgba(0,0,0,0.45); color:#fff;
+  font-size:0.55rem; padding:2px 5px; border-radius:4px;
+  pointer-events:none; opacity:0; transition:opacity 0.2s;
+}
+.item-img-wrap:hover .img-tap-hint { opacity:1; }
 .item-img-blank {
-  width:100%; height:100%;
+  width:100%; height:100%; min-height:90px;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:3px; color:var(--text-secondary);
+  gap:3px; color:var(--text-secondary); cursor:default;
 }
 .item-img-blank span { font-size:1.5rem; opacity:0.35; }
 .item-img-blank small { font-size:0.6rem; font-weight:500; opacity:0.45; text-align:center; line-height:1.3; }
+
+/* LIGHTBOX */
+#lightbox {
+  display:none; position:fixed; inset:0; z-index:8000;
+  background:rgba(0,0,0,0.92); backdrop-filter:blur(6px);
+  flex-direction:column; align-items:center; justify-content:center;
+}
+#lightbox.show { display:flex; }
+#lightbox-img-wrap {
+  position:relative; width:100%; flex:1;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden; touch-action:none;
+}
+#lightbox-img {
+  max-width:90vw; max-height:75vh;
+  object-fit:contain; border-radius:8px;
+  transform-origin:center center;
+  transition:transform 0.15s ease;
+  user-select:none; -webkit-user-drag:none;
+  pointer-events:none;
+}
+.lb-bar {
+  width:100%; display:flex; align-items:center;
+  justify-content:space-between; padding:14px 18px;
+  gap:10px; flex-shrink:0;
+}
+.lb-title {
+  font-family:var(--font); font-size:0.85rem; font-weight:600;
+  color:rgba(255,255,255,0.85); flex:1; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.lb-btn {
+  background:rgba(255,255,255,0.12); color:#fff;
+  border:1px solid rgba(255,255,255,0.2); border-radius:8px;
+  width:40px; height:40px; font-size:1.1rem;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; flex-shrink:0; transition:background 0.15s;
+  font-family:var(--font);
+}
+.lb-btn:hover { background:rgba(255,255,255,0.22); }
+.lb-btn:active { transform:scale(0.93); }
+.lb-controls {
+  display:flex; align-items:center; gap:10px;
+  padding:0 18px 18px;
+}
+.lb-zoom-label {
+  font-size:0.78rem; color:rgba(255,255,255,0.55);
+  font-family:var(--font); font-weight:600; min-width:38px;
+  text-align:center;
+}
 
 /* CARD */
 .item {
@@ -210,7 +272,7 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
       <span class="brand-icon" id="brandIcon">💊</span>
       <div class="brand-text">
         <span class="brand-name">Aaradhya Pharmaceuticals</span>
-        <span class="brand-version">v1.1.0</span>
+        <span class="brand-version">v1.2.0</span>
       </div>
     </div>
     <button class="theme-btn" onclick="openTheme()">🎨 Theme</button>
@@ -248,6 +310,23 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
   <button class="btn-checkout" onclick="sendOrder()">🛒 Checkout via WhatsApp</button>
 </div>
 
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <div class="lb-bar">
+    <span class="lb-title" id="lbTitle"></span>
+    <button class="lb-btn" onclick="closeLightbox()">✕</button>
+  </div>
+  <div id="lightbox-img-wrap">
+    <img id="lightbox-img" src="" alt="">
+  </div>
+  <div class="lb-controls">
+    <button class="lb-btn" onclick="lbZoom(-0.25)">−</button>
+    <span class="lb-zoom-label" id="lbZoomLabel">100%</span>
+    <button class="lb-btn" onclick="lbZoom(+0.25)">+</button>
+    <button class="lb-btn" style="margin-left:auto" onclick="lbReset()">⟳</button>
+  </div>
+</div>
+
 <div id="alertModal">
   <div class="m-box">
     <div class="m-hdr"><span class="m-hdr-ico">💊</span><span class="m-hdr-ttl">Aaradhya Pharmaceuticals</span></div>
@@ -271,6 +350,67 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 </div>
 
 <script>
+/* ── LIGHTBOX ── */
+var lbScale = 1;
+var lbMin = 0.5, lbMax = 4;
+
+function openLightbox(src, title) {
+  var lb  = document.getElementById('lightbox');
+  var img = document.getElementById('lightbox-img');
+  img.src = src;
+  img.style.transform = 'scale(1)';
+  lbScale = 1;
+  document.getElementById('lbTitle').textContent = title || '';
+  document.getElementById('lbZoomLabel').textContent = '100%';
+  lb.classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightbox-img').src = '';
+  document.body.style.overflow = '';
+}
+
+function lbZoom(delta) {
+  lbScale = Math.min(lbMax, Math.max(lbMin, lbScale + delta));
+  document.getElementById('lightbox-img').style.transform = 'scale(' + lbScale + ')';
+  document.getElementById('lbZoomLabel').textContent = Math.round(lbScale * 100) + '%';
+}
+
+function lbReset() {
+  lbScale = 1;
+  document.getElementById('lightbox-img').style.transform = 'scale(1)';
+  document.getElementById('lbZoomLabel').textContent = '100%';
+}
+
+// Close lightbox on background tap
+document.getElementById('lightbox').addEventListener('click', function(e) {
+  if (e.target === this || e.target === document.getElementById('lightbox-img-wrap')) {
+    closeLightbox();
+  }
+});
+
+// Pinch-to-zoom on mobile
+(function(){
+  var wrap = document.getElementById('lightbox-img-wrap');
+  var initDist = 0, initScale = 1;
+  wrap.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2) {
+      initDist  = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      initScale = lbScale;
+    }
+  }, { passive:true });
+  wrap.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2) {
+      var dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      lbScale = Math.min(lbMax, Math.max(lbMin, initScale * (dist / initDist)));
+      document.getElementById('lightbox-img').style.transform = 'scale(' + lbScale + ')';
+      document.getElementById('lbZoomLabel').textContent = Math.round(lbScale * 100) + '%';
+    }
+  }, { passive:true });
+})();
+
 /* ── MODAL ── */
 var _cb = null;
 function showModal(emoji, msg, cb) {
@@ -484,12 +624,20 @@ function render(reset) {
       var img = document.createElement('img');
       img.src = converted;
       img.alt = p.name;
-      img.onerror = function(){
-        this.parentNode.innerHTML = '<div class="item-img-blank"><span>📷</span><small>Image not available</small></div>';
-      };
+      (function(src, name, wrap){
+        img.onerror = function(){
+          wrap.innerHTML = '<div class="item-img-blank"><span>📷</span><small>Image not available</small></div>';
+          wrap.style.cursor = 'default';
+        };
+        wrap.addEventListener('click', function(){
+          if (img.complete && img.naturalWidth) openLightbox(src, name);
+        });
+      })(converted, p.name, imgWrap);
       imgWrap.appendChild(img);
+      imgWrap.insertAdjacentHTML('beforeend', '<span class="img-tap-hint">🔍 Tap</span>');
     } else {
       imgWrap.innerHTML = '<div class="item-img-blank"><span>📷</span><small>Image not available</small></div>';
+      imgWrap.style.cursor = 'default';
     }
     d.appendChild(imgWrap);
 
