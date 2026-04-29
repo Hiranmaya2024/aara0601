@@ -86,25 +86,6 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 @media(min-width:860px)  { #list{grid-template-columns:repeat(3,1fr); padding:16px; gap:14px;} }
 @media(min-width:1100px) { #list{grid-template-columns:repeat(4,1fr);} }
 
-/* CARD IMAGE */
-.item-img-wrap {
-  width:100%; height:110px;
-  border-radius:8px; overflow:hidden;
-  background:var(--body-bg);
-  border:1px solid var(--border);
-  display:flex; align-items:center; justify-content:center;
-  margin-bottom:2px; flex-shrink:0;
-}
-.item-img-wrap img {
-  width:100%; height:100%; object-fit:contain;
-  display:block; transition:opacity 0.25s;
-}
-.item-img-blank {
-  width:100%; height:100%;
-  display:flex; align-items:center; justify-content:center;
-  color:var(--border); font-size:2rem;
-}
-
 /* CARD */
 .item { background:var(--card-bg); border-radius:var(--radius); box-shadow:var(--card-shadow); padding:14px; border:1px solid var(--border); display:flex; flex-direction:column; gap:5px; animation:cardIn 0.25s ease both; transition:box-shadow var(--tr),transform var(--tr); }
 .item:hover { box-shadow:0 6px 24px rgba(10,46,82,0.15); transform:translateY(-1px); }
@@ -298,7 +279,7 @@ function parseCSV(text) {
 var products=[], filtered=[], cart={}, visible=12;
 var COL = { name:0, pack:1, mrp:3, rate:4, company:5, composition:6 }; // default guess
 
-var CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkoAFrWFkerY629v3zhsV5q3NggnlHgSgBqZ2CnAK3n0riqW24dZN3iWm_JJz-XPf9Dtgkayaey-Vg/pub?output=csv';
+var CSV_URL = 'https://docs.google.com/spreadsheets/d/1OlY-BMsluyLrGD1lpv9dKa2rRKFhl1Q9/export?format=csv';
 
 fetch(CSV_URL)
   .then(function(r){ return r.text(); })
@@ -336,13 +317,11 @@ fetch(CSV_URL)
         mrp:         parseFloat((r[COL.mrp]  || '').replace(/[^\d.]/g,'')) || 0,
         rate:        parseFloat((r[COL.rate] || '').replace(/[^\d.]/g,'')) || 0,
         company:     (r[COL.company]     || '').trim(),
-        composition: (r[COL.composition] || '').trim(),
-        imageUrl:    (r[8]              || '').trim()
+        composition: (r[COL.composition] || '').trim()
       };
     }).filter(function(p){ return p.name; });
 
     console.log('Sample product:', products[0]);
-    if (products[0]) console.log('Image URL sample:', products[0].imageUrl);
 
     filtered = products.slice();
     buildDropdowns();
@@ -404,27 +383,6 @@ function doFilter() {
   render(true);
 }
 
-/* ── GOOGLE DRIVE URL CONVERTER ── */
-function toDirectImgUrl(url) {
-  if (!url) return '';
-  url = url.trim();
-
-  // Format 1: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
-  var m1 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m1) return 'https://drive.google.com/thumbnail?id=' + m1[1] + '&sz=w400';
-
-  // Format 2: https://drive.google.com/open?id=FILE_ID
-  var m2 = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
-  if (m2) return 'https://drive.google.com/thumbnail?id=' + m2[1] + '&sz=w400';
-
-  // Format 3: already a direct thumbnail or uc link
-  var m3 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-  if (m3) return 'https://drive.google.com/thumbnail?id=' + m3[1] + '&sz=w400';
-
-  // Not a Drive link — use as-is (regular http image URL)
-  return url;
-}
-
 /* ── RENDER ── */
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -445,40 +403,15 @@ function render(reset) {
     var p = slice[i];
     if (document.getElementById('card-'+p.id)) continue;
 
-    var d = document.createElement('div');
-    d.className = 'item';
-    d.id = 'card-'+p.id;
-
-    // Convert any Google Drive share link to direct image URL
-    var imgSrc = '';
-    if (p.imageUrl && p.imageUrl.length > 4) {
-      imgSrc = toDirectImgUrl(p.imageUrl);
-    }
-
-    // Build image area using createElement (avoids URL encoding bugs)
-    var imgWrap = document.createElement('div');
-    imgWrap.className = 'item-img-wrap';
-    if (imgSrc) {
-      var img = document.createElement('img');
-      img.alt = p.name;
-      img.src = imgSrc;
-      img.onerror = function(){ 
-        this.parentNode.innerHTML = '<div class="item-img-blank">💊</div>'; 
-      };
-      imgWrap.appendChild(img);
-    } else {
-      imgWrap.innerHTML = '<div class="item-img-blank">💊</div>';
-    }
-    d.appendChild(imgWrap);
-
     var compHtml = '';
     if (p.composition && p.composition.length > 0) {
       compHtml = '<div class="item-composition">🧪 ' + esc(p.composition) + '</div>';
     }
 
-    var rest = document.createElement('div');
-    rest.style.cssText = 'display:contents';
-    rest.innerHTML =
+    var d = document.createElement('div');
+    d.className = 'item';
+    d.id = 'card-'+p.id;
+    d.innerHTML =
       '<div class="item-name">'    + esc(p.name)    + '</div>' +
       '<div class="item-company">' + esc(p.company) + '</div>' +
       '<div><span class="item-pack">📦 ' + esc(p.pack) + '</span></div>' +
@@ -489,7 +422,7 @@ function render(reset) {
       '</div>' +
       '<div class="spacer"></div>' +
       '<div class="controls" id="ctrl-'+p.id+'">' + mkCtrl(p.id, cart[p.id]||0) + '</div>';
-    d.appendChild(rest);
+
     list.appendChild(d);
   }
 }
