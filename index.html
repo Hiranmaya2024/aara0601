@@ -721,5 +721,98 @@ function sendOrder() {
   window.open('https://wa.me/919533762508?text='+msg);
 }
 </script>
+<!-- ✅ FOOTER SNIPPET — Paste this just before </body> in your index.html -->
+
+<style>
+  .aara-footer {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+    color: #e0e0e0;
+    text-align: center;
+    padding: 18px 20px 14px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    border-top: 2px solid #00d4aa;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .aara-footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00d4aa, #0099ff, #00d4aa, transparent);
+    animation: shimmer 3s infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .aara-footer .footer-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1.8;
+  }
+
+  .aara-footer .footer-copy {
+    font-weight: 600;
+    color: #ffffff;
+  }
+
+  .aara-footer .footer-sep {
+    color: #00d4aa;
+    font-weight: 300;
+  }
+
+  .aara-footer .footer-tech {
+    color: #a0c4ff;
+    font-style: italic;
+  }
+
+  .aara-footer .footer-ai {
+    display: inline-block;
+    background: linear-gradient(90deg, #00d4aa, #0099ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .aara-footer .footer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(0, 212, 170, 0.12);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    color: #00d4aa;
+    margin-top: 5px;
+  }
+</style>
+
+<footer class="aara-footer">
+  <div class="footer-line">
+    <span class="footer-copy">©️ Aaradhya Pharmaceuticals, 2026</span>
+    <span class="footer-sep">|</span>
+    <span class="footer-tech">Built with <strong>Aaratech</strong></span>
+    <span class="footer-sep">|</span>
+    <span>Powered by <span class="footer-ai">AI</span></span>
+  </div>
+  <div>
+    <span class="footer-pill">💊 Crafting Health, Digitally</span>
+  </div>
+</footer>
+
+<!-- ✅ END FOOTER SNIPPET -->
+
 </body>
 </html>
