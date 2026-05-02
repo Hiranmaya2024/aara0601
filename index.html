@@ -404,6 +404,42 @@ body { font-family:var(--font); background:var(--body-bg); color:var(--text-prim
 </div>
 
 <script>
+/* ══════════════════════════════════════════════
+   VOICE ENGINE — Web Speech API (speechSynthesis)
+   ══════════════════════════════════════════════ */
+var _voiceReady = false;
+var _voiceQueue = [];
+
+function _initVoice() {
+  // Warm up voices (some browsers need a user gesture)
+  if (window.speechSynthesis) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.addEventListener('voiceschanged', function() { _voiceReady = true; });
+    _voiceReady = true;
+  }
+}
+_initVoice();
+
+function speak(text, priority) {
+  if (!window.speechSynthesis) return;
+  // If priority (e.g. errors/confirmations), cancel current speech
+  if (priority) window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang  = 'en-IN';   // Indian English accent
+  u.rate  = 1.05;
+  u.pitch = 1.05;
+  u.volume = 1;
+  // Pick a preferred voice if available
+  var voices = window.speechSynthesis.getVoices();
+  var preferred = voices.find(function(v){
+    return v.lang === 'en-IN' || v.name.toLowerCase().indexOf('india') > -1;
+  }) || voices.find(function(v){
+    return v.lang.startsWith('en');
+  });
+  if (preferred) u.voice = preferred;
+  window.speechSynthesis.speak(u);
+}
+
 /* ── LIGHTBOX ── */
 var lbScale = 1;
 var lbMin = 0.5, lbMax = 4;
@@ -418,24 +454,29 @@ function openLightbox(src, title) {
   document.getElementById('lbZoomLabel').textContent = '100%';
   lb.classList.add('show');
   document.body.style.overflow = 'hidden';
+  speak('Viewing image of ' + (title || 'product'));
 }
 
 function closeLightbox() {
   document.getElementById('lightbox').classList.remove('show');
   document.getElementById('lightbox-img').src = '';
   document.body.style.overflow = '';
+  speak('Image closed');
 }
 
 function lbZoom(delta) {
   lbScale = Math.min(lbMax, Math.max(lbMin, lbScale + delta));
   document.getElementById('lightbox-img').style.transform = 'scale(' + lbScale + ')';
-  document.getElementById('lbZoomLabel').textContent = Math.round(lbScale * 100) + '%';
+  var pct = Math.round(lbScale * 100);
+  document.getElementById('lbZoomLabel').textContent = pct + '%';
+  speak('Zoom ' + pct + ' percent');
 }
 
 function lbReset() {
   lbScale = 1;
   document.getElementById('lightbox-img').style.transform = 'scale(1)';
   document.getElementById('lbZoomLabel').textContent = '100%';
+  speak('Zoom reset to 100 percent');
 }
 
 // Close lightbox on background tap
@@ -472,6 +513,7 @@ function showModal(emoji, msg, cb) {
   document.getElementById('mTxt').textContent = msg;
   _cb = cb || null;
   document.getElementById('alertModal').classList.add('show');
+  speak(msg, true);
 }
 function closeModal() {
   document.getElementById('alertModal').classList.remove('show');
@@ -487,6 +529,7 @@ function highlight(id) {
 
 /* ── THEMES ── */
 var TICONS = { pharma:'💊', darknight:'🦇', jungle:'🌿', avengers:'⚡', indian:'🇮🇳' };
+var TNAMES = { pharma:'Pharma', darknight:'Dark Night', jungle:'Jungle', avengers:'Avengers', indian:'Indian' };
 var curTheme = localStorage.getItem('aa_theme') || 'pharma';
 function applyTheme(t) {
   curTheme = t; localStorage.setItem('aa_theme', t);
@@ -495,9 +538,17 @@ function applyTheme(t) {
   document.querySelectorAll('.t-opt').forEach(function(b){ b.classList.remove('active'); });
   var ab = document.getElementById('t-'+t); if (ab) ab.classList.add('active');
   closeTheme();
+  speak((TNAMES[t] || t) + ' theme applied');
 }
-function openTheme()  { document.getElementById('tSheet').style.display='block'; document.getElementById('tOverlay').style.display='block'; }
-function closeTheme() { document.getElementById('tSheet').style.display='none';  document.getElementById('tOverlay').style.display='none'; }
+function openTheme()  {
+  document.getElementById('tSheet').style.display='block';
+  document.getElementById('tOverlay').style.display='block';
+  speak('Choose a theme');
+}
+function closeTheme() {
+  document.getElementById('tSheet').style.display='none';
+  document.getElementById('tOverlay').style.display='none';
+}
 applyTheme(curTheme);
 
 /* ── CSV PARSER ── */
@@ -571,6 +622,7 @@ fetch(CSV_URL)
     filtered = products.slice();
     buildDropdowns();
     render(true);
+    speak('Welcome to Aaradhya Pharmaceuticals. ' + products.length + ' products loaded. Ready to order.');
   })
   .catch(function(e){
     console.error('Fetch error:', e);
@@ -578,6 +630,7 @@ fetch(CSV_URL)
       '<div class="empty-state"><div style="font-size:2.5rem">⚠️</div>' +
       '<div style="font-weight:600">Failed to load products</div>' +
       '<div style="font-size:0.85rem">Check your connection and try again</div></div>';
+    speak('Failed to load products. Please check your internet connection and try again.', true);
   });
 
 /* ── DROPDOWNS ── */
@@ -607,6 +660,7 @@ function buildDropdowns() {
 }
 
 /* ── FILTER ── */
+var _filterTimer = null;
 function doFilter() {
   var s  = (document.getElementById('search').value || '').toLowerCase().trim();
   var c  = document.getElementById('filterCompany').value;
@@ -626,6 +680,16 @@ function doFilter() {
 
   visible = 12;
   render(true);
+
+  // Debounce voice for search typing
+  clearTimeout(_filterTimer);
+  _filterTimer = setTimeout(function() {
+    if (filtered.length === 0) {
+      speak('No products found for your search.', true);
+    } else if (s || c || cx) {
+      speak(filtered.length + ' product' + (filtered.length !== 1 ? 's' : '') + ' found');
+    }
+  }, 700);
 }
 
 /* ── IMAGE URL CONVERTER ── */
@@ -725,11 +789,23 @@ function mkCtrl(id, qty) {
 }
 
 function upd(id, d) {
-  cart[id] = (cart[id]||0) + d;
+  var prev = cart[id] || 0;
+  cart[id] = prev + d;
   if (cart[id] < 0) cart[id] = 0;
   var c = document.getElementById('ctrl-'+id);
   if (c) c.innerHTML = mkCtrl(id, cart[id]);
   refreshCart();
+
+  var name = products[id] ? products[id].name : 'item';
+  if (prev === 0 && cart[id] === 1) {
+    speak(name + ' added to cart');
+  } else if (cart[id] === 0) {
+    speak(name + ' removed from cart');
+  } else if (d > 0) {
+    speak('Quantity ' + cart[id]);
+  } else {
+    speak('Quantity ' + cart[id]);
+  }
 }
 
 function refreshCart() {
